@@ -11,6 +11,10 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    NOTION_CLIENT_ID: z.string(),
+    NOTION_CLIENT_SECRET: z.string(),
+    BETTER_AUTH_SECRET: z.string().min(32),
+    BETTER_AUTH_URL: z.string().url().optional(),
   },
 
   /**
@@ -29,6 +33,13 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,
+    NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET,
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    // Add more server-side env vars here if needed
+    // e.g. NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    // Note: Only add client-side env vars here that are prefixed with `NEXT_PUBLIC_`
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**
