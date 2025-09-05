@@ -1,0 +1,667 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import {
+  Calendar,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  Send,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { api } from "@/trpc/react";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+type SchedulingResult = {
+  scheduledTaskIds: string[];
+  unscheduledTaskIds: string[];
+  unscheduledTasks?: Array<{
+    id: string;
+    title: string;
+    durationMinutes: number;
+    due: Date | null;
+    priority: number | null;
+  }>;
+  events: Array<{
+    taskId: string;
+    start: Date;
+    end: Date;
+    title: string;
+  }>;
+  meta: {
+    status: "optimal" | "feasible" | "impossible" | "error";
+    successRate: number;
+    wallTimeMs: number;
+  };
+};
+
+type FeedbackMessage = {
+  role: "user" | "ai";
+  text: string;
+};
+
+// ============================================================================
+// Component
+// ============================================================================
+
+export function ScheduleButton() {
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewResult, setPreviewResult] = useState<SchedulingResult | null>(null);
+  const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
+
+  // Reschedule mode state
+  const [isRescheduleMode, setIsRescheduleMode] = useState(false);
+  const [oldEventIds, setOldEventIds] = useState<string[]>([]);
+
+  // Feedback loop state
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessage[]>([]);
+  const [feedbackInput, setFeedbackInput] = useState("");
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [explanationsLoading, setExplanationsLoading] = useState(false);
+
+  const feedbackEndRef = useRef<HTMLDivElement>(null);
+
+  const utils = api.useUtils();
+
+  // Reset feedback state when dialog closes
+  const handleDialogChange = (open: boolean, opts?: { skipCancel?: boolean }) => {
+    setShowPreview(open);
+    if (!open) {
+      if (previewSessionId && !opts?.skipCancel) {
+        cancelPreviewMutation.mutate({ previewSessionId });
+      }
+      setPreviewSessionId(null);
+      setFeedbackHistory([]);
+      setFeedbackInput("");
+      setExplanations({});
+      setPreviewResult(null);
+      setIsRescheduleMode(false);
+      setOldEventIds([]);
+    }
+  };
+
+  // Auto-scroll feedback thread to bottom
+  useEffect(() => {
+    feedbackEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [feedbackHistory]);
+
+  // ── Queries ──────────────────────────────────────────────────────────────
+  const { data: stats } = api.scheduler.getSchedulingStats.useQuery();
+  const { data: health, isLoading: healthLoading } = api.scheduler.checkSolverHealth.useQuery();
+  const { data: calendars } = api.calendar.getAll.useQuery();
+
+  // Explanation query (lazy — enabled only when dialog is open and we have scheduled tasks)
+  const scheduledTasksForExplain = previewResult?.events.map((e) => ({
+    id: e.taskId,
+    start: e.start.toISOString(),
+    end: e.end.toISOString(),
+  })) ?? [];
+
+  const { data: explainData, isFetching: explainFetching } =
+    api.scheduler.explainSchedule.useQuery(
+      { scheduledTasks: scheduledTasksForExplain },
+      {
+        enabled:
+          showPreview &&
+          scheduledTasksForExplain.length > 0 &&
+          Object.keys(explanations).length === 0,
+        retry: false,
+      },
+    );
+
+  useEffect(() => {
+    if (explainData?.explanations) {
+      setExplanations(explainData.explanations);
+    }
+  }, [explainData]);
+
+  useEffect(() => {
+    setExplanationsLoading(explainFetching);
+  }, [explainFetching]);
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
+  const previewMutation = api.scheduler.schedulePreview.useMutation({
+    onSuccess: (result) => {
+      setPreviewSessionId(result.previewSessionId);
+      setPreviewResult(result.scheduleResult);
+      setFeedbackHistory([]);
+      setExplanations({});
+      setShowPreview(true);
+    },
+    onError: (error) => {
+      toast.error("Vorschau fehlgeschlagen", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
+  const confirmMutation = api.scheduler.confirmAndSave.useMutation({
+    onSuccess: (result) => {
+      if (result.meta.status === "optimal" || result.meta.status === "feasible") {
+        toast.success("Aufgaben erfolgreich eingeplant!", {
+          description: `${result.scheduledTaskIds.length} Aufgabe${result.scheduledTaskIds.length !== 1 ? "n" : ""} gespeichert`,
+          position: "bottom-left",
+        });
+        void utils.calendar.getAllCalendarsWithUnifiedEvents.invalidate();
+        void utils.calendar.getAllUnifiedEvents.invalidate();
+        void utils.scheduler.getSchedulingStats.invalidate();
+        setPreviewSessionId(null);
+        handleDialogChange(false, { skipCancel: true });
+      } else if (result.meta.status === "impossible") {
+        toast.error("Keine Aufgaben konnten gespeichert werden", {
+          position: "bottom-left",
+        });
+      } else {
+        toast.error("Speichern fehlgeschlagen", { position: "bottom-left" });
+      }
+    },
+    onError: (error) => {
+      toast.error("Fehler beim Speichern", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
+  const feedbackMutation = api.scheduler.applyFeedbackAndPreview.useMutation({
+    onSuccess: (result) => {
+      setFeedbackHistory((prev) => [
+        ...prev,
+        { role: "ai", text: result.aiReply },
+      ]);
+
+      if (result.newSchedule && !result.clarificationNeeded) {
+        setPreviewResult(result.newSchedule);
+        setExplanations({});
+      }
+    },
+    onError: (error) => {
+      setFeedbackHistory((prev) => [
+        ...prev,
+        { role: "ai", text: `Fehler: ${error.message}` },
+      ]);
+    },
+  });
+
+  const cancelPreviewMutation = api.scheduler.cancelPreview.useMutation({
+    onError: () => {
+      // Best-effort rollback on close; surface only in logs.
+      console.warn("[schedule] Failed to cancel preview session");
+    },
+  });
+
+  const rescheduleWeekMutation = api.scheduler.rescheduleWeekPreview.useMutation({
+    onSuccess: (result) => {
+      setPreviewSessionId(result.previewSessionId);
+      setPreviewResult(result.scheduleResult);
+      setOldEventIds(result.oldEventIds);
+      setIsRescheduleMode(true);
+      setFeedbackHistory([]);
+      setExplanations({});
+      setShowPreview(true);
+    },
+    onError: (error) => {
+      toast.error("Neuplanung fehlgeschlagen", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
+  const clearScheduledMutation = api.scheduler.clearAllScheduledEvents.useMutation({
+    onSuccess: (result) => {
+      toast.success(`${result.deletedCount} eingeplante Aufgabe${result.deletedCount !== 1 ? "n" : ""} gelöscht`, {
+        position: "bottom-left",
+      });
+      void utils.calendar.getAllCalendarsWithUnifiedEvents.invalidate();
+      void utils.calendar.getAllUnifiedEvents.invalidate();
+      void utils.scheduler.getSchedulingStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Löschen fehlgeschlagen", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const writableCalendar =
+    calendars?.find(
+      (cal) => cal.calendarAccount.provider === "campusclock" && !cal.readOnly,
+    ) ?? calendars?.find((cal) => !cal.readOnly);
+
+  const handlePreviewSchedule = () => {
+    previewMutation.mutate({ timeHorizon: 7 });
+  };
+
+  const handleConfirmSchedule = () => {
+    if (!writableCalendar) {
+      toast.error("Kein beschreibbarer Kalender gefunden");
+      return;
+    }
+    if (!previewSessionId) {
+      toast.error("Vorschau-Sitzung nicht gefunden. Bitte erneut Vorschau berechnen.");
+      return;
+    }
+    confirmMutation.mutate({
+      calendarId: writableCalendar.id,
+      previewSessionId,
+      ...(isRescheduleMode && oldEventIds.length > 0 ? { deleteEventIds: oldEventIds } : {}),
+    });
+  };
+
+  const handleSendFeedback = () => {
+    const msg = feedbackInput.trim();
+    if (!msg || feedbackMutation.isPending) return;
+    if (!previewSessionId) {
+      toast.error("Vorschau-Sitzung fehlt. Bitte Vorschau neu laden.");
+      return;
+    }
+
+    setFeedbackHistory((prev) => [...prev, { role: "user", text: msg }]);
+    setFeedbackInput("");
+
+    feedbackMutation.mutate({
+      previewSessionId,
+      message: msg,
+      currentSchedule: previewResult?.events.map((e) => ({
+        id: e.taskId,
+        start: e.start.toISOString(),
+        end: e.end.toISOString(),
+      })),
+    });
+  };
+
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat("de-DE", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "optimal":
+        return <Badge className="bg-green-500">Optimal</Badge>;
+      case "feasible":
+        return <Badge className="bg-blue-500">Machbar</Badge>;
+      case "impossible":
+        return <Badge variant="destructive">Nicht möglich</Badge>;
+      default:
+        return <Badge variant="secondary">Fehler</Badge>;
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (healthLoading) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-28" />
+        </div>
+      </div>
+    );
+  }
+
+  if (health?.available === false) {
+    return (
+      <Alert variant="destructive" className="max-w-md">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Planer offline: {health.error ?? "Unbekannter Fehler"}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const hasTasksToSchedule = (stats?.unscheduledTasks ?? 0) > 0;
+
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col">
+          <div className="text-sm font-medium">
+            {stats?.unscheduledTasks ?? 0} Aufgabe
+            {stats?.unscheduledTasks !== 1 ? "n" : ""} wartend
+          </div>
+          {stats && stats.scheduledTasks > 0 && (
+            <div className="text-muted-foreground text-xs">
+              {stats.scheduledTasks} bereits eingeplant
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={handlePreviewSchedule}
+            disabled={!hasTasksToSchedule || previewMutation.isPending}
+            size="sm"
+          >
+            {previewMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Berechne...
+              </>
+            ) : (
+              <>
+                <Calendar className="mr-2 h-4 w-4" />
+                Einplanen
+              </>
+            )}
+          </Button>
+          {stats && stats.scheduledTasks > 0 && (
+            <Button
+              onClick={() => rescheduleWeekMutation.mutate({ timeHorizon: 7 })}
+              disabled={rescheduleWeekMutation.isPending}
+              size="sm"
+              variant="outline"
+            >
+              {rescheduleWeekMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Berechne...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Neu planen
+                </>
+              )}
+            </Button>
+          )}
+          {stats && stats.scheduledTasks > 0 && (
+            <Button
+              onClick={() => clearScheduledMutation.mutate()}
+              disabled={clearScheduledMutation.isPending}
+              size="sm"
+              variant="outline"
+            >
+              {clearScheduledMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Lösche...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Alle löschen
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Preview + Feedback Dialog */}
+      <Dialog open={showPreview} onOpenChange={handleDialogChange}>
+        <DialogContent
+          className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden"
+          onInteractOutside={(e) => {
+            if (confirmMutation.isPending) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (confirmMutation.isPending) e.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {isRescheduleMode ? "Woche neu planen" : "Stundenplan Vorschau"}
+            </DialogTitle>
+            <DialogDescription>
+              {isRescheduleMode
+                ? "Alle Aufgaben dieser Woche werden neu eingeplant."
+                : "Überprüfe den vorgeschlagenen Plan, bevor er gespeichert wird."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewResult && (
+            <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+              {/* Status Summary */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(previewResult.meta.status)}
+                    <span className="text-sm font-medium">
+                      {previewResult.scheduledTaskIds.length} von{" "}
+                      {previewResult.scheduledTaskIds.length +
+                        previewResult.unscheduledTaskIds.length}{" "}
+                      Aufgaben eingeplant
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    Erfolgsrate:{" "}
+                    {(previewResult.meta.successRate * 100).toFixed(0)}% ·
+                    Berechnet in{" "}
+                    {(previewResult.meta.wallTimeMs / 1000).toFixed(2)}s
+                  </div>
+                </div>
+                {previewResult.meta.status === "optimal" && (
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                )}
+              </div>
+
+              {/* Unscheduled tasks detail */}
+              {previewResult.unscheduledTaskIds.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                    <h4 className="text-sm font-semibold text-destructive">
+                      {previewResult.unscheduledTaskIds.length} Aufgabe
+                      {previewResult.unscheduledTaskIds.length !== 1 ? "n" : ""}{" "}
+                      nicht eingeplant
+                    </h4>
+                  </div>
+                  <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-lg border border-destructive/20 bg-destructive/5 p-2">
+                    {(previewResult.unscheduledTasks ?? []).map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-start justify-between rounded-md px-2 py-1.5 text-sm"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{task.title}</div>
+                          <div className="text-muted-foreground text-xs flex gap-2 mt-0.5">
+                            <span>{task.durationMinutes} min</span>
+                            {task.due && (
+                              <span>
+                                · Fällig{" "}
+                                {new Intl.DateTimeFormat("de-DE", {
+                                  month: "short",
+                                  day: "numeric",
+                                }).format(new Date(task.due))}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(previewResult.unscheduledTasks ?? []).length === 0 && (
+                      <p className="text-muted-foreground text-xs px-2 py-1">
+                        Passe Arbeitszeiten oder Deadlines an, um diese Aufgaben einzuplanen.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Scheduled Events with optional explanation icons */}
+              {previewResult.events.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Eingeplante Aufgaben</h4>
+                  <div className="max-h-52 space-y-2 overflow-y-auto rounded-lg border p-3">
+                    {previewResult.events.map((event, index) => {
+                      const explanation = explanations[event.taskId];
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-start justify-between rounded-md border p-3 text-sm"
+                        >
+                          <div className="flex flex-1 items-start gap-2">
+                            <div className="flex-1">
+                              <div className="font-medium">{event.title}</div>
+                              <div className="text-muted-foreground text-xs">
+                                {formatDate(event.start)} →{" "}
+                                {formatDate(event.end)}
+                              </div>
+                            </div>
+                            {/* Info icon — shown when AI explanation is available or loading */}
+                            {(explanation ?? explanationsLoading) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0 transition-colors"
+                                    aria-label="Erklärung anzeigen"
+                                  >
+                                    <Info className="h-3.5 w-3.5" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-64 text-left">
+                                  {explanation ?? "Lade Erklärung…"}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground ml-2 shrink-0 text-xs">
+                            {Math.round(
+                              (event.end.getTime() - event.start.getTime()) /
+                                1000 /
+                                60,
+                            )}
+                            min
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── AI Feedback Section ── */}
+              <Separator />
+
+              {/* Feedback thread (AI replies) */}
+              {feedbackHistory.length > 0 && (
+                <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg bg-muted/40 p-3">
+                  {feedbackHistory.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={
+                        msg.role === "user"
+                          ? "text-foreground text-sm font-medium"
+                          : "text-muted-foreground text-sm"
+                      }
+                    >
+                      {msg.role === "user" ? "Du: " : "KI: "}
+                      {msg.text}
+                    </div>
+                  ))}
+                  <div ref={feedbackEndRef} />
+                </div>
+              )}
+
+              {/* Feedback input */}
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Passt das so? Gib Feedback auf Deutsch, z.B. &quot;Physik lieber nachmittags&quot; oder &quot;Mathe braucht nur 30 Minuten&quot;:
+                </p>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendFeedback();
+                      }
+                    }}
+                    placeholder="Dein Feedback, z.B. Aufgabe kürzer oder später…"
+                    className="min-h-[2.5rem] resize-none"
+                    rows={1}
+                    disabled={feedbackMutation.isPending}
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={handleSendFeedback}
+                    disabled={
+                      !feedbackInput.trim() || feedbackMutation.isPending
+                    }
+                    aria-label="Feedback senden"
+                  >
+                    {feedbackMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleDialogChange(false)}
+                  disabled={confirmMutation.isPending}
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  onClick={handleConfirmSchedule}
+                  disabled={
+                    confirmMutation.isPending ||
+                    previewResult.scheduledTaskIds.length === 0 ||
+                    !previewSessionId
+                  }
+                >
+                  {confirmMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Speichern...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Ja, speichern
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

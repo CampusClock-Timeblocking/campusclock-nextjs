@@ -1,0 +1,437 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  // Relationships
+  projects           Project[]
+  habits             Habit[]
+  tasks              Task[]
+  taskFeedbacks      TaskFeedback[]
+  schedulingConfig   SchedulingConfig?
+  workingPreferences WorkingPreferences?
+  excludedPeriods    ExcludedPeriod[]
+  calendarAccounts   CalendarAccount[]
+  Calendars          Calendar[]
+  schedulePreviewSessions SchedulePreviewSession[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+// =======================================================================
+// ================================ App ==================================
+// =======================================================================
+
+enum TaskStatus {
+  TO_DO
+  SNOOZED
+  SKIPPED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELLED
+
+  @@map("task_status")
+}
+
+model Project {
+  id          String  @id @default(uuid())
+  title       String
+  description String? @db.Text
+  priority    Int? // TODO: Review using floats for normalized values, so no scaling factor is needed
+
+  // Scheduling
+  startDate DateTime      @default(now())
+  deadline  DateTime?
+  status    ProjectStatus @default(NOT_STARTED)
+
+  // Relationships
+  tasks       Task[]
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId    String?
+  subProjects Project[] @relation("ParentProjects")
+  parent      Project?  @relation("ParentProjects", fields: [parentId], references: [id], onDelete: SetNull)
+
+  // Metadata
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([userId, status])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@map("project_status")
+}
+
+model Task {
+  id              String     @id @default(uuid())
+  title           String
+  description     String?    @db.Text
+  status          TaskStatus @default(TO_DO)
+  durationMinutes     Int?
+  priority            Int?
+  complexity          Int?
+  due                 DateTime?
+  scheduledTime       String?
+  preferredStartAfter Int? // minutes since midnight (e.g. 780 = 13:00), set by AI feedback
+  updatedAt           DateTime @updatedAt
+
+  // Relationships
+  taskCompletions TaskCompletion[] // For task completion tracking
+  taskFeedbacks   TaskFeedback[]
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  habitId         String?
+  habit           Habit?           @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  Event           Event[]
+  schedulePreviewTaskChanges SchedulePreviewTaskChange[]
+
+  @@map("tasks")
+}
+
+model Habit {
+  id              String     @id @default(uuid())
+  title           String
+  description     String?    @db.Text
+  durationMinutes Int?
+  priority        Int?
+  active          Boolean    @default(true)
+  recurrenceType  PeriodUnit
+  interval        Int        @default(1)
+  timesPerPeriod  Int        @default(1) // desired occurence count per period
+  byWeekdays      Int[]      @default([]) // 0-6, 0 is Sunday
+  preferredTime   DateTime?  @db.Time()
+  customRule      Json?
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrences     Task[]
+
+  @@index([userId])
+  @@index([userId, active])
+  @@map("habits")
+}
+
+model CalendarAccount {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Common
+  email     String?
+  name      String?
+  calendars Calendar[]
+
+  provider          String
+  providerAccountId String
+
+  // OAuth (nullable)
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime?
+  scope        String?   @db.Text
+
+  // CalDAV (nullable)
+  encryptedPassword String? @db.Text
+  calDavUrl         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider, providerAccountId])
+  @@index([userId])
+}
+
+model Calendar {
+  id              String @id @default(uuid())
+  name            String
+  backgroundColor String
+  foregroundColor String
+
+  type       CalendarType @default(LOCAL)
+  externalId String?
+  readOnly   Boolean      @default(true)
+
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Event  Event[]
+
+  calendarAccountId String
+  calendarAccount   CalendarAccount @relation(fields: [calendarAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, calendarAccountId, externalId])
+  @@index([userId, type])
+  @@map("calendars")
+}
+
+enum CalendarType {
+  LOCAL
+  EXTERNAL
+
+  @@map("calendar_type")
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  start       DateTime
+  end         DateTime
+  allDay      Boolean  @default(false)
+  color       String
+  location    String?
+
+  // Relationships
+
+  calendarId String
+  calendar   Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+ 
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("events")
+}
+
+model TaskCompletion {
+  id        String   @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+
+  // Relationships
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_completions")
+}
+
+model SchedulingConfig {
+  id String @id @default(uuid())
+
+  timezone                   String             @default("Europe/Berlin")
+  horizonDays                Int                @default(7) // days to plan ahead
+  allowTaskSplitting         Boolean            @default(false)
+  reschedulingAggressiveness Float              @default(0.5)
+  reschedulingPolicy         ReschedulingPolicy @default(MANUAL_TRIGGER)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReschedulingPolicy {
+  EVENT_BASED // automatic based on calendar and task changes
+  DAILY_INTERVAL // automatic daily planning at midnight
+  MANUAL_TRIGGER // explicit trigger by user
+}
+
+model WorkingPreferences {
+  id String @id @default(uuid())
+
+  // Hours + availability
+  earliestTime        DateTime  @db.Time() // REVIEW: Working hours could be extracted into own model to allow multiple time ranges
+  latestTime          DateTime  @db.Time()
+  dailyMaxMinutes     Int       @default(600) // absolute cap
+  dailyOptimalMinutes Int       @default(480) // ideal working time
+  workingDays         Weekday[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY])
+
+  // Rhythm + breaks
+  focusPeriodMinutes Int @default(60) // duration of focus sessions
+  shortBreakMinutes  Int @default(15) // normal micro break duration between focus sessions
+  longBreakMinutes   Int @default(60) // long break duration between focus sessions
+  longBreakFrequency Int @default(3) // number of focus sessions between long breaks
+
+  // Energy profile
+  alertnessByHour Float[] // Value between 0 and 1 for each hour of the day
+  // REVIEW: Add preferred modes (e.g. "creative", "deep", "admin" with times and weights)
+
+  // Duration learning
+  durationMultiplier   Float @default(1.0)
+  durationObservations Int   @default(0)
+
+  // Fitness weight overrides
+  weightDeadlinePenalty Float @default(1.0)
+  weightEnergyPenalty   Float @default(1.0)
+  weightEarlinessBonus  Float @default(1.0)
+  weightClusterBonus    Float @default(1.0)
+
+  // Outcome counters for adaptive deadline pressure
+  deadlineMissCount  Int @default(0)
+  deadlineTotalCount Int @default(0)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Weekday {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+model ExcludedPeriod {
+  id        String   @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+  reason    String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, startTime, endTime])
+  @@map("excluded_periods")
+}
+
+enum SchedulePreviewStatus {
+  ACTIVE
+  CONFIRMED
+  CANCELED
+  EXPIRED
+}
+
+model SchedulePreviewSession {
+  id               String                @id @default(uuid())
+  userId           String
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           SchedulePreviewStatus @default(ACTIVE)
+  seed             Int
+  baseDate         DateTime
+  timeHorizon      Int
+  previewEventsJson Json
+  expiresAt        DateTime
+  confirmedAt      DateTime?
+  canceledAt       DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  taskChanges      SchedulePreviewTaskChange[]
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("schedule_preview_sessions")
+}
+
+model SchedulePreviewTaskChange {
+  id                     String                 @id @default(uuid())
+  sessionId              String
+  session                SchedulePreviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  taskId                 String
+  task                   Task                   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  oldDue                 DateTime?
+  oldPriority            Int?
+  oldDurationMinutes     Int?
+  oldPreferredStartAfter Int?
+  lastSessionUpdatedAt   DateTime?
+  createdAt              DateTime               @default(now())
+
+  @@unique([sessionId, taskId])
+  @@index([taskId])
+  @@map("schedule_preview_task_changes")
+}
+
+enum PeriodUnit {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+model TaskFeedback {
+  id                       String   @id @default(uuid())
+  taskTitle                String
+  taskDescription          String?  @db.Text
+  embedding                Unsupported("vector(1536)")
+  actualDurationMinutes    Int
+  userComplexity           Int
+  feedbackText             String?  @db.Text
+  estimatedDurationMinutes Int?
+  estimatedPriority        Int?
+  estimatedComplexity      Int?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId String @unique
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("task_feedback")
+}
