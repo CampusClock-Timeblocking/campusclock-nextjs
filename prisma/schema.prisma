@@ -21,6 +21,11 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  Project         Project[]
+  habits          Habit[]
+  scheduleBlocks  ScheduleBlock[]
+  userPreferences UserPreferences?
+
   @@unique([email])
   @@map("user")
 }
@@ -68,4 +73,107 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+// =======================================================================
+// ================================ App ==================================
+// =======================================================================
+
+enum TaskStatus {
+  TO_DO
+  SNOOZED
+  SKIPPED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  PARTIAL
+  CANCELLED
+
+  @@map("task_status")
+}
+
+enum ScheduleBlockStatus {
+  SUGGESTED
+  SCHEDULED
+  COMPLETED
+
+  @@map("schedule_block_status")
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  title       String
+  description String?   @db.Text
+  deadline    DateTime?
+  active      Boolean   @default(true)
+
+  tasks  Task[]
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("projects")
+}
+
+model Task {
+  id                   String     @id @default(uuid())
+  name                 String
+  description          String?    @db.Text
+  status               TaskStatus @default(TO_DO)
+  estimatedDurationMin Int?
+  priority             Int?
+  complexity           Int?
+  due                  DateTime?
+  scheduledTime        String?
+
+  projectId      String
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scheduleBlocks ScheduleBlock[]
+
+  @@map("tasks")
+}
+
+model Habit {
+  id              String  @id @default(uuid())
+  title           String
+  recurrenceRule  String
+  preferredTime   String
+  durationMinutes Int
+  active          Boolean @default(true)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("habits")
+}
+
+model ScheduleBlock {
+  id        String              @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+  status    ScheduleBlockStatus @default(SUGGESTED)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("schedule_blocks")
+}
+
+model UserPreferences {
+  id String @id @default(uuid())
+
+  earliestTime        String
+  latestTime          String
+  dailyMaxMin         Int
+  dailyOptimalMin     Int
+  aggressiveness      Float
+  allowCalendarWrites Boolean
+  timezone            String
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
 }
