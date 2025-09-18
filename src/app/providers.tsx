@@ -22,7 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
       Link={Link}
       credentials={false}
       social={{
-        providers: ["notion"],
+        providers: ["google"],
       }}
     >
       {children}
