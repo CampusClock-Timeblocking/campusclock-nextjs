@@ -1,3 +1,4 @@
+import { EventCalendar } from "@/components/event-calendar";
 import { api } from "@/trpc/server";
 
 export default async function CalendarTestPage() {
@@ -7,5 +8,5 @@ export default async function CalendarTestPage() {
   });
 
   console.log(data);
-  return <div>Calendar test page</div>;
+  return <EventCalendar events={data ?? []} />;
 }

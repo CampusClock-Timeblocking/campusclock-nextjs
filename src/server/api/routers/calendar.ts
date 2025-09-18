@@ -42,11 +42,17 @@ export const calendarRouter = createTRPCRouter({
         auth: oAuthClient,
       });
 
+      console.log(events.data.items);
+
       return events.data.items?.map((event) => ({
         id: event.id,
         title: event.summary,
-        start: event.start?.dateTime,
-        end: event.end?.dateTime,
+        start: event.start?.dateTime ?? event.start?.date,
+        end: event.end?.dateTime ?? event.start?.date,
+        allDay:
+          event.start &&
+          event.start.dateTime === undefined &&
+          event.end?.dateTime === undefined,
       }));
     }),
 });
