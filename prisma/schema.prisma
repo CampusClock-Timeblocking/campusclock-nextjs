@@ -21,9 +21,11 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  Project         Project[]
+  // Relationships
+  projects        Project[]
   habits          Habit[]
-  scheduleBlocks  ScheduleBlock[]
+  tasks           Task[]
+
   userPreferences UserPreferences?
 
   @@unique([email])
@@ -79,32 +81,23 @@ model Verification {
 // ================================ App ==================================
 // =======================================================================
 
-enum TaskStatus {
+enum TaskStatus { // TODO: Review and simplify, define states clearly
   TO_DO
   SNOOZED
   SKIPPED
   IN_PROGRESS
   PAUSED
   COMPLETED
-  PARTIAL
   CANCELLED
 
   @@map("task_status")
-}
-
-enum ScheduleBlockStatus {
-  SUGGESTED
-  SCHEDULED
-  COMPLETED
-
-  @@map("schedule_block_status")
 }
 
 model Project {
   id          String        @id @default(uuid())
   title       String
   description String?       @db.Text
-  priority    Int?
+  priority    Int? // TODO: Review using floats for normalized values, so no scaling factor is needed
   
   // Scheduling
   startDate   DateTime @default(now())
@@ -148,12 +141,15 @@ model Task {
   due             DateTime?
   scheduledTime   String?
 
+  // Relationships
+  scheduleBlocks ScheduleBlock[] // Provides flexibility for future task splitting (for now only one block)
+  taskCompletions TaskCompletion[] // For task completion tracking
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectId      String?
   project        Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  scheduleBlocks ScheduleBlock[]
-
   habitId String?
-  habit   Habit?  @relation(fields: [habitId], references: [id], onDelete: SetNull)
+  habit   Habit?  @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
   @@map("tasks")
 }
@@ -179,18 +175,31 @@ model Habit {
   @@map("habits")
 }
 
+// REVIEW: Models for schedule and completion tracking could be merged into one model
 model ScheduleBlock {
   id        String              @id @default(uuid())
   startTime DateTime
   endTime   DateTime
-  status    ScheduleBlockStatus @default(SUGGESTED)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relationships
   taskId String
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
+  @@index([taskId])
   @@map("schedule_blocks")
+}
+
+model TaskCompletion {
+  id        String              @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+  
+  // Relationships
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_completions")
 }
 
 model UserPreferences {
