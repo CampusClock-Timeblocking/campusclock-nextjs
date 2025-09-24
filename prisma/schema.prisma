@@ -22,11 +22,12 @@ model User {
   accounts      Account[]
 
   // Relationships
-  projects        Project[]
-  habits          Habit[]
-  tasks           Task[]
-
-  userPreferences UserPreferences?
+  projects           Project[]
+  habits             Habit[]
+  tasks              Task[]
+  schedulingConfig   SchedulingConfig?
+  workingPreferences WorkingPreferences?
+  excludedPeriods    ExcludedPeriod[]
 
   @@unique([email])
   @@map("user")
@@ -81,7 +82,7 @@ model Verification {
 // ================================ App ==================================
 // =======================================================================
 
-enum TaskStatus { // TODO: Review and simplify, define states clearly
+enum TaskStatus {
   TO_DO
   SNOOZED
   SKIPPED
@@ -94,16 +95,16 @@ enum TaskStatus { // TODO: Review and simplify, define states clearly
 }
 
 model Project {
-  id          String        @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
-  description String?       @db.Text
+  description String? @db.Text
   priority    Int? // TODO: Review using floats for normalized values, so no scaling factor is needed
-  
+
   // Scheduling
-  startDate   DateTime @default(now())
-  deadline    DateTime?
-  status      ProjectStatus @default(NOT_STARTED)
-  
+  startDate DateTime      @default(now())
+  deadline  DateTime?
+  status    ProjectStatus @default(NOT_STARTED)
+
   // Relationships
   tasks       Task[]
   userId      String
@@ -113,8 +114,8 @@ model Project {
   parent      Project?  @relation("ParentProjects", fields: [parentId], references: [id], onDelete: SetNull)
 
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   completedAt DateTime?
 
   @@index([userId, status])
@@ -142,14 +143,14 @@ model Task {
   scheduledTime   String?
 
   // Relationships
-  scheduleBlocks ScheduleBlock[] // Provides flexibility for future task splitting (for now only one block)
+  scheduleBlocks  ScheduleBlock[] // Provides flexibility for future task splitting (for now only one block)
   taskCompletions TaskCompletion[] // For task completion tracking
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId      String?
-  project        Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  habitId String?
-  habit   Habit?  @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  habitId         String?
+  habit           Habit?           @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
   @@map("tasks")
 }
@@ -165,6 +166,7 @@ model Habit {
   interval        Int        @default(1)
   timesPerPeriod  Int        @default(1) // desired occurence count per period
   byWeekdays      Int[]      @default([]) // 0-6, 0 is Sunday
+  preferredTime   DateTime?  @db.Time()
   customRule      Json?
   userId          String
   user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -177,10 +179,10 @@ model Habit {
 
 // REVIEW: Models for schedule and completion tracking could be merged into one model
 model ScheduleBlock {
-  id        String              @id @default(uuid())
+  id        String   @id @default(uuid())
   startTime DateTime
   endTime   DateTime
-  
+
   // Relationships
   taskId String
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -190,10 +192,10 @@ model ScheduleBlock {
 }
 
 model TaskCompletion {
-  id        String              @id @default(uuid())
+  id        String   @id @default(uuid())
   startTime DateTime
   endTime   DateTime
-  
+
   // Relationships
   taskId String
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
@@ -202,22 +204,62 @@ model TaskCompletion {
   @@map("task_completions")
 }
 
-model UserPreferences {
+model SchedulingConfig {
   id String @id @default(uuid())
 
-  earliestTime        String
-  latestTime          String
-  dailyMaxMin         Int
-  dailyOptimalMin     Int
-  aggressiveness      Float
-  allowCalendarWrites Boolean
-  timezone            String
+  timezone                   String             @default("Europe/Berlin")
+  horizonDays                Int                @default(7) // days to plan ahead
+  allowTaskSplitting         Boolean            @default(false)
+  reschedulingAggressiveness Float              @default(0.5)
+  reschedulingPolicy         ReschedulingPolicy @default(MANUAL_TRIGGER)
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReschedulingPolicy {
+  EVENT_BASED // automatic based on calendar and task changes
+  DAILY_INTERVAL // automatic daily planning at midnight
+  MANUAL_TRIGGER // explicit trigger by user
+}
+
+model WorkingPreferences {
+  id String @id @default(uuid())
+
+  // Hours + availability
+  earliestTime        DateTime @db.Time() // REVIEW: Working hours could be extracted into own model to allow multiple time ranges
+  latestTime          DateTime @db.Time()
+  dailyMaxMinutes     Int      @default(600) // absolute cap
+  dailyOptimalMinutes Int      @default(480) // ideal working time
+  workingDays         Int[]    @default([0, 1, 2, 3, 4, 5, 6]) // 0-6, 0 is Sunday
+
+  // Rhythm + breaks
+  focusPeriodMinutes Int @default(60) // duration of focus sessions
+  shortBreakMinutes  Int @default(15) // normal micro break duration between focus sessions
+  longBreakMinutes   Int @default(60) // long break duration between focus sessions
+  longBreakFrequency Int @default(3) // number of focus sessions between long breaks
+
+  // Energy profile
+  alertnessByHour Float[] // Value between 0 and 1 for each hour of the day
+  // REVIEW: Add preferred modes (e.g. "creative", "deep", "admin" with times and weights)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ExcludedPeriod {
+  id        String   @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+  reason    String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
+
+  @@index([userId, startTime, endTime])
+  @@map("excluded_periods")
 }
 
 enum PeriodUnit {
