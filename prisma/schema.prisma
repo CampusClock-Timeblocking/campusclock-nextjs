@@ -129,20 +129,30 @@ model Task {
   project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   scheduleBlocks ScheduleBlock[]
 
+  habitId String?
+  habit   Habit?  @relation(fields: [habitId], references: [id], onDelete: SetNull)
+
   @@map("tasks")
 }
 
 model Habit {
-  id              String  @id @default(uuid())
+  id              String     @id @default(uuid())
   title           String
-  recurrenceRule  String
-  preferredTime   String
-  durationMinutes Int
-  active          Boolean @default(true)
+  description     String?    @db.Text
+  durationMinutes Int?
+  priority        Int?
+  active          Boolean    @default(true)
+  recurrenceType  PeriodUnit
+  interval        Int        @default(1)
+  timesPerPeriod  Int        @default(1) // desired occurence count per period
+  byWeekdays      Int[]      @default([]) // 0-6, 0 is Sunday
+  customRule      Json?
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrences     Task[]
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  @@index([userId])
+  @@index([userId, active])
   @@map("habits")
 }
 
@@ -176,4 +186,11 @@ model UserPreferences {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
+}
+
+enum PeriodUnit {
+  DAY
+  WEEK
+  MONTH
+  YEAR
 }
