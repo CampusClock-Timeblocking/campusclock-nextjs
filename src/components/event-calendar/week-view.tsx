@@ -54,13 +54,13 @@ export function WeekView({
   onEventCreate,
 }: WeekViewProps) {
   const days = useMemo(() => {
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
   }, [currentDate]);
 
   const weekStart = useMemo(
-    () => startOfWeek(currentDate, { weekStartsOn: 0 }),
+    () => startOfWeek(currentDate, { weekStartsOn: 1 }),
     [currentDate],
   );
 
@@ -160,7 +160,7 @@ export function WeekView({
         let placed = false;
 
         while (!placed) {
-          const col = columns[columnIndex] || [];
+          const col = columns[columnIndex] ?? [];
           if (col.length === 0) {
             columns[columnIndex] = col;
             placed = true;
@@ -183,7 +183,7 @@ export function WeekView({
         }
 
         // Ensure column is initialized before pushing
-        const currentColumn = columns[columnIndex] || [];
+        const currentColumn = columns[columnIndex] ?? [];
         columns[columnIndex] = currentColumn;
         currentColumn.push({ event, end: adjustedEnd });
 

@@ -65,7 +65,7 @@ function EventWrapper({
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className,
       )}
-      data-dragging={isDragging || undefined}
+      data-dragging={isDragging ?? undefined}
       data-past-event={isEventInPast || undefined}
       onClick={onClick}
       onMouseDown={onMouseDown}
@@ -115,7 +115,7 @@ export function EventItem({
 
   // Use the provided currentTime (for dragging) or the event's actual time
   const displayStart = useMemo(() => {
-    return currentTime || new Date(event.start);
+    return currentTime ?? new Date(event.start);
   }, [currentTime, event.start]);
 
   const displayEnd = useMemo(() => {
@@ -162,7 +162,7 @@ export function EventItem({
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
       >
-        {children || (
+        {children ?? (
           <span className="truncate">
             {!event.allDay && (
               <span className="truncate font-normal opacity-70 sm:text-[11px]">

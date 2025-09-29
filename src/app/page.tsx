@@ -9,7 +9,7 @@ export default function Home() {
   const requestGoogleCalendarAccess = async () => {
     await authClient.linkSocial({
       provider: "google",
-      scopes: ["https://www.googleapis.com/auth/calendar.events"],
+      scopes: [],
     });
   };
   return (

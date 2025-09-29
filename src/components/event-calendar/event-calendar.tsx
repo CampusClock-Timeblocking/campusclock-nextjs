@@ -166,6 +166,7 @@ export function EventCalendar({
       start: startTime,
       end: addHoursToDate(startTime, 1),
       allDay: false,
+      
     };
     setSelectedEvent(newEvent);
     setIsEventDialogOpen(true);

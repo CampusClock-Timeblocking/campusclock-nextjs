@@ -4,13 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RiCalendarLine, RiDeleteBinLine } from "@remixicon/react";
 import { format, isBefore } from "date-fns";
 
-import type { CalendarEvent } from "@/components/event-calendar/event-calendar";
-import {
-  DefaultEndHour,
-  DefaultStartHour,
-  EndHour,
-  StartHour,
-} from "@/components/event-calendar/constants";
+import type { CalendarEvent, EventColor } from "@/components/event-calendar/event-calendar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -39,7 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { EventColor } from "./types";
+import {
+  StartHour,
+  EndHour,
+  DefaultStartHour,
+  DefaultEndHour,
+} from "@/components/event-calendar/constants";
 
 interface EventDialogProps {
   event: CalendarEvent | null;
@@ -64,7 +63,7 @@ export function EventDialog({
   const [endTime, setEndTime] = useState(`${DefaultEndHour}:00`);
   const [allDay, setAllDay] = useState(false);
   const [location, setLocation] = useState("");
-  const [color, setColor] = useState<EventColor>("sky");
+  const [color, setColor] = useState<EventColor>("blue");
   const [error, setError] = useState<string | null>(null);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
@@ -104,7 +103,7 @@ export function EventDialog({
     setEndTime(`${DefaultEndHour}:00`);
     setAllDay(false);
     setLocation("");
-    setColor("sky");
+    setColor("blue");
     setError(null);
   };
 
@@ -195,16 +194,10 @@ export function EventDialog({
     borderClass: string;
   }> = [
     {
-      value: "sky",
-      label: "Sky",
-      bgClass: "bg-sky-400 data-[state=checked]:bg-sky-400",
-      borderClass: "border-sky-400 data-[state=checked]:border-sky-400",
-    },
-    {
-      value: "amber",
-      label: "Amber",
-      bgClass: "bg-amber-400 data-[state=checked]:bg-amber-400",
-      borderClass: "border-amber-400 data-[state=checked]:border-amber-400",
+      value: "blue",
+      label: "Blue",
+      bgClass: "bg-blue-400 data-[state=checked]:bg-blue-400",
+      borderClass: "border-blue-400 data-[state=checked]:border-blue-400",
     },
     {
       value: "violet",
@@ -448,6 +441,7 @@ export function EventDialog({
           {event?.id && (
             <Button
               variant="outline"
+              className="text-destructive hover:text-destructive"
               size="icon"
               onClick={handleDelete}
               aria-label="Delete event"
