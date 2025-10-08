@@ -4,260 +4,333 @@
 import { useEffect, useMemo } from "react";
 import type { OnboardingData } from "@/lib/schemas";
 
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+
+import { Clock, CalendarDays, Sparkles } from "lucide-react";
+
+/* ================= utils ================= */
 type Props = {
   value: OnboardingData;
-  /** Patch-API: nur geänderte Felder übergeben */
   onChange: (patch: Partial<OnboardingData>) => void;
 };
 
+const DAY_MIN = 24 * 60;
+const STEP_MIN = 30;
+
 const DAYS = [
-  { i: 0, label: "So" },
   { i: 1, label: "Mo" },
   { i: 2, label: "Di" },
   { i: 3, label: "Mi" },
   { i: 4, label: "Do" },
   { i: 5, label: "Fr" },
   { i: 6, label: "Sa" },
-];
+  { i: 0, label: "So" },
+] as const;
 
-/** Zeitutils lokal halten, damit der Step autark bleibt */
+const DUR_OPTIONS = [240, 360, 450, 480, 540, 600, 720]; // 4h, 6h, 7:30, 8h, 9h, 10h, 12h
+
 function toMin(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + (m ?? 0);
+  return (Number.isFinite(h) ? h! : 0) * 60 + (Number.isFinite(m) ? m! : 0);
 }
 function toHHMM(min: number) {
-  const mm = Math.max(0, Math.min(23 * 60 + 59, min));
+  const mm = Math.max(0, Math.min(DAY_MIN - 1, Math.round(min)));
   const h = String(Math.floor(mm / 60)).padStart(2, "0");
   const m = String(mm % 60).padStart(2, "0");
   return `${h}:${m}`;
 }
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
+}
+function roundTo(n: number, step: number) {
+  return Math.round(n / step) * step;
+}
+function fmtDur(total: number) {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
 
-export function WorkingHoursStep({ value, onChange }: Props) {
-  // Tage toggeln
-  function toggleDay(i: number) {
-    const set = new Set(value.workingDays);
-    if (set.has(i)) {
-      set.delete(i);
-    } else {
-      set.add(i);
-    }
-    onChange({ workingDays: Array.from(set).sort((a, b) => a - b) });
-  }
+/* ================= component ================= */
+export default function WorkingHoursStep({ value, onChange }: Props) {
+  const startMin = toMin(value.earliestTime);
+  const endMin = toMin(value.latestTime);
+  const duration = Math.max(STEP_MIN, endMin - startMin);
 
-  // Persona-Presets (setzen Zeiten & Tage)
-  function applyPersona(p: "student" | "employee" | "freelancer") {
-    if (p === "student") {
-      onChange({
-        earliestTime: "09:00",
-        latestTime: "17:30",
-        workingDays: [1, 2, 3, 4, 5],
-        // energyPreset: "night_owl" as any, // ← optional, nur falls im Schema vorhanden
-      });
-    } else if (p === "employee") {
-      onChange({
-        earliestTime: "08:00",
-        latestTime: "17:00",
-        workingDays: [1, 2, 3, 4, 5],
-        // energyPreset: "balanced" as any,
-      });
-    } else {
-      onChange({
-        earliestTime: "10:00",
-        latestTime: "18:00",
-        workingDays: [1, 2, 3, 4, 5, 6],
-        // energyPreset: "night_owl" as any,
-      });
-    }
-  }
+  const windowMinutes = useMemo(
+    () => Math.max(0, endMin - startMin),
+    [startMin, endMin]
+  );
+  const invalid = windowMinutes < STEP_MIN;
 
-  // Schnell-Auswahl für Arbeitstage
-  function setDays(kind: "weekdays" | "weekend" | "all" | "none") {
-    if (kind === "weekdays") onChange({ workingDays: [1, 2, 3, 4, 5] });
-    if (kind === "weekend") onChange({ workingDays: [0, 6] }); // konsistent sortiert
-    if (kind === "all") onChange({ workingDays: [0, 1, 2, 3, 4, 5, 6] });
-    if (kind === "none") onChange({ workingDays: [] });
-  }
-
-  // Sanfter Auto-Fix: Ende > Start erzwingen (min. 30 Min Fenster)
+  // Auto-Fix
   useEffect(() => {
-    const start = toMin(value.earliestTime);
-    const end = toMin(value.latestTime);
-    if (end <= start) {
-      const fixed = toHHMM(Math.min(start + 30, 23 * 60 + 59)); // exakt +30 Min
-      onChange({ latestTime: fixed });
+    if (endMin <= startMin) {
+      onChange({
+        latestTime: toHHMM(clamp(startMin + STEP_MIN, 0, DAY_MIN)),
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.earliestTime, value.latestTime]);
 
-  const windowMinutes = useMemo(() => {
-    return Math.max(0, toMin(value.latestTime) - toMin(value.earliestTime));
-  }, [value.earliestTime, value.latestTime]);
+  function setDays(kind: "weekdays" | "all") {
+    if (kind === "weekdays") onChange({ workingDays: [1, 2, 3, 4, 5] });
+    if (kind === "all") onChange({ workingDays: [1, 2, 3, 4, 5, 6, 0] });
+  }
 
-  const invalid = windowMinutes < 30;
+  function onDaysChange(vals: string[]) {
+    const arr = vals.map((v) => parseInt(v, 10));
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    arr.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    onChange({ workingDays: arr });
+  }
+
+  function applyWindow(start: string, end: string) {
+    onChange({ earliestTime: start, latestTime: end });
+  }
+
+  function commitStart(newStartMin: number) {
+    const s = clamp(roundTo(newStartMin, STEP_MIN), 0, DAY_MIN - duration);
+    const e = s + duration;
+    onChange({ earliestTime: toHHMM(s), latestTime: toHHMM(e) });
+  }
+
+  function commitDuration(newDurMin: number) {
+    const d = clamp(roundTo(newDurMin, STEP_MIN), 240, 720); // 4h–12h
+    const s = clamp(startMin, 0, DAY_MIN - d);
+    const e = s + d;
+    onChange({ earliestTime: toHHMM(s), latestTime: toHHMM(e) });
+  }
+
+  const timeStepSeconds = STEP_MIN * 60;
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-medium">Arbeitszeiten & Tage</h2>
-          <p className="text-sm text-neutral-500">
-            Wir planen nur innerhalb dieser Fenster.
-          </p>
+    <section
+      className="
+        space-y-5
+        rounded-2xl
+        p-4
+        [background:radial-gradient(1200px_500px_at_100%_-20%,hsl(var(--primary)/0.06),transparent_60%),radial-gradient(900px_360px_at_-10%_0%,hsl(var(--secondary)/0.07),transparent_60%)]
+      "
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h3 className="text-base font-semibold tracking-tight">Arbeitszeiten</h3>
         </div>
-        <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-700 ring-1 ring-neutral-200">
-          Fenster: {windowMinutes} Min
-        </span>
+        <Badge
+          variant="secondary"
+          className="rounded-full border bg-background/60 backdrop-blur supports-[backdrop-filter]:px-3"
+        >
+          {fmtDur(windowMinutes)}
+        </Badge>
       </div>
 
-      {/* Persona Presets */}
-      <div className="space-y-2">
-        <div className="text-xs uppercase tracking-wide text-neutral-500">
-          Schnellstart-Presets
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => applyPersona("student")}
-            className="rounded-xl border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
+      {/* Pretty presets – pill buttons */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: "8–16", s: "08:00", e: "16:00" },
+          { label: "9–17", s: "09:00", e: "17:00" },
+          { label: "10–18", s: "10:00", e: "18:00" },
+        ].map((p) => (
+          <Button
+            key={p.label}
+            className="h-12 rounded-xl border bg-white/60 text-sm shadow-sm backdrop-blur transition hover:shadow-md dark:bg-white/10"
+            variant="outline"
+            onClick={() => applyWindow(p.s, p.e)}
           >
-            Student
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPersona("employee")}
-            className="rounded-xl border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
-          >
-            Berufstätig
-          </button>
-          <button
-            type="button"
-            onClick={() => applyPersona("freelancer")}
-            className="rounded-xl border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
-          >
-            Freelancer
-          </button>
-        </div>
+            {p.label}
+          </Button>
+        ))}
       </div>
 
-      {/* Zeiten */}
-      <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-neutral-700">Früheste Zeit</span>
-          <input
-            type="time"
-            value={value.earliestTime}
-            onChange={(e) => onChange({ earliestTime: e.target.value })}
-            className="rounded-xl border px-3 py-2"
-            aria-label="Früheste Zeit"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-neutral-700">Späteste Zeit</span>
-          <input
-            type="time"
-            value={value.latestTime}
-            onChange={(e) => onChange({ latestTime: e.target.value })}
-            className="rounded-xl border px-3 py-2"
-            aria-label="Späteste Zeit"
-          />
-        </label>
+      {/* Start & Dauer – visual compact cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Startzeit */}
+        <Card className="border-muted/70 bg-background/60 shadow-sm backdrop-blur">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <Label className="text-sm">Startzeit</Label>
+              </div>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {value.earliestTime}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <input
+              type="time"
+              className="h-12 w-full rounded-xl border bg-background px-4 font-mono text-base tabular-nums shadow-sm"
+              value={value.earliestTime}
+              step={timeStepSeconds}
+              onChange={(e) => commitStart(toMin(e.target.value))}
+            />
+            <div className="text-xs text-muted-foreground">
+              Ende:{" "}
+              <span className="font-mono tabular-nums">
+                {toHHMM(startMin + duration)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dauer */}
+        <Card className="border-muted/70 bg-background/60 shadow-sm backdrop-blur">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <Label className="text-sm">Dauer</Label>
+              </div>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {fmtDur(duration)}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                className="h-12 w-full rounded-xl border bg-background px-4 text-base shadow-sm"
+                value={String(duration)}
+                onChange={(e) => commitDuration(parseInt(e.target.value, 10))}
+              >
+                {DUR_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {fmtDur(d)}
+                  </option>
+                ))}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-xl"
+                  onClick={() => commitDuration(duration - STEP_MIN)}
+                >
+                  −30m
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-xl"
+                  onClick={() => commitDuration(duration + STEP_MIN)}
+                >
+                  +30m
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+              {/* mini progress bar for day coverage */}
+              <div
+                className="h-full bg-primary/70"
+                style={{
+                  width: `${(Math.min(duration, 12 * 60) / (12 * 60)) * 100}%`,
+                }}
+              />
+            </div>
+
+            {invalid && (
+              <Alert variant="default" className="mt-1">
+                <AlertDescription className="text-sm">
+                  Dein Fenster ist sehr klein. Erhöhe die Dauer.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {invalid && (
-        <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Dein Arbeitsfenster ist sehr klein. Erhöhe die „Späteste Zeit“ für sinnvollere Planung.
-        </div>
-      )}
-
-      {/* Tage */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <span className="block text-sm text-neutral-700">Arbeitstage</span>
-          <div className="flex flex-wrap gap-1">
-            <button
-              type="button"
-              onClick={() => setDays("weekdays")}
-              className="rounded-lg px-2 py-1 text-xs text-neutral-700 ring-1 ring-neutral-300 hover:bg-neutral-50"
-            >
-              Mo–Fr
-            </button>
-            <button
-              type="button"
-              onClick={() => setDays("weekend")}
-              className="rounded-lg px-2 py-1 text-xs text-neutral-700 ring-1 ring-neutral-300 hover:bg-neutral-50"
-            >
-              Sa–So
-            </button>
-            <button
-              type="button"
-              onClick={() => setDays("all")}
-              className="rounded-lg px-2 py-1 text-xs text-neutral-700 ring-1 ring-neutral-300 hover:bg-neutral-50"
-            >
-              Alle
-            </button>
-            <button
-              type="button"
-              onClick={() => setDays("none")}
-              className="rounded-lg px-2 py-1 text-xs text-neutral-700 ring-1 ring-neutral-300 hover:bg-neutral-50"
-            >
-              Keine
-            </button>
+      {/* Arbeitstage – visually delightful chips */}
+      <Card className="border-muted/70 bg-background/60 shadow-sm backdrop-blur">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm">Arbeitstage</Label>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
+                    Presets
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDays("weekdays")}>
+                    Mo–Fr
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDays("all")}>
+                    Alle
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() =>
+                  onChange({
+                    earliestTime: "09:00",
+                    latestTime: "17:00",
+                    workingDays: [1, 2, 3, 4, 5],
+                  })
+                }
+              >
+                Zurücksetzen
+              </Button>
+            </div>
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {DAYS.map((d) => {
-            const active = value.workingDays.includes(d.i);
-            return (
-              <button
+        </CardHeader>
+        <CardContent>
+          <ToggleGroup
+            type="multiple"
+            value={value.workingDays.map(String)}
+            onValueChange={onDaysChange}
+            className="flex flex-wrap gap-2"
+            aria-label="Arbeitstage auswählen"
+          >
+            {DAYS.map((d) => (
+              <ToggleGroupItem
                 key={d.i}
-                type="button"
-                onClick={() => toggleDay(d.i)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${
-                  active
-                    ? "bg-neutral-900 text-white"
-                    : "border border-neutral-300 text-neutral-700 hover:bg-neutral-50"
-                }`}
-                aria-pressed={active}
+                value={String(d.i)}
+                className="
+                  rounded-full px-4 py-2 text-sm
+                  data-[state=on]:bg-primary data-[state=on]:text-primary-foreground
+                  border bg-background/80 shadow-sm
+                "
                 aria-label={`Arbeitstag ${d.label}`}
               >
                 {d.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          {/* Small helper hint */}
+          <div className="mt-3 text-xs text-muted-foreground">
+            Tipp: Starte mit <span className="font-medium">Mo–Fr</span>, aktiviere{" "}
+            <span className="font-medium">Sa</span> für Sprints.
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Mini Timeline Preview */}
-      <div className="rounded-xl border p-3">
-        <div className="mb-2 text-xs text-neutral-500">
-          Vorschau: Tagesleiste (Arbeitsfenster)
-        </div>
-        <div className="relative h-8 w-full rounded bg-neutral-100 ring-1 ring-neutral-200">
-          {/* Arbeitsfenster */}
-          {(() => {
-            const s = toMin(value.earliestTime) / (24 * 60);
-            const e = toMin(value.latestTime) / (24 * 60);
-            const left = `${s * 100}%`;
-            const width = `${Math.max(0, (e - s) * 100)}%`;
-            return (
-              <div
-                className="absolute inset-y-0 rounded bg-neutral-400/60"
-                style={{ left, width }}
-                aria-hidden="true"
-                title={`${value.earliestTime}–${value.latestTime}`}
-              />
-            );
-          })()}
-          <div className="absolute -bottom-5 left-0 text-[10px] text-neutral-500">
-            00:00
-          </div>
-          <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-neutral-500">
-            12:00
-          </div>
-          <div className="absolute -bottom-5 right-0 text-[10px] text-neutral-500">
-            24:00
-          </div>
+      {/* subtle footer pill with current window */}
+      <div className="mt-1 flex items-center justify-center">
+        <div className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-xs shadow-sm backdrop-blur">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-mono tabular-nums">
+            {value.earliestTime}–{value.latestTime}
+          </span>
+          <span className="text-muted-foreground">•</span>
+          <span>{value.workingDays.length} Tage</span>
         </div>
       </div>
     </section>

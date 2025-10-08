@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@daveyplate/better-auth-ui/css";
+@import "rc-slider/assets/index.css";
+
 
 @custom-variant dark (&:is(.dark *));
 

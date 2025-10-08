@@ -1,20 +1,22 @@
 // FILE: src/lib/schemas.ts
 import { z } from "zod"
 
-// ---------- Zeit-Utils ----------
+/* ===================== Zeit-Utils ===================== */
 export const toMin = (t: string) => {
   const [hRaw, mRaw] = t.split(":")
   const h = Number(hRaw)
   const m = Number(mRaw)
   return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m)
 }
+
 export const toHHMM = (min: number) => {
-  const h = Math.floor(min / 60)
-  const m = min % 60
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.floor(min)))
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
 }
 
-// ---------- Shared ----------
+/* ===================== Shared ===================== */
 export const timeString = z
   .string()
   .regex(/^\d{2}:\d{2}$/, "Bitte im Format HH:MM eingeben")
@@ -25,12 +27,8 @@ export const excludedPeriodSchema = z.object({
   reason: z.string().optional(),
 })
 
-export const quickItemSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(2, "Zu kurz"),
-  durationMinutes: z.number().int().min(5).max(240),
-  priority: z.number().int().min(1).max(5).default(3),
-})
+export const energyPresetEnum = z.enum(["early_bird", "balanced", "night_owl"])
+export type EnergyPreset = z.infer<typeof energyPresetEnum>
 
 export const schedulingModeEnum = z.enum([
   "EVENT_BASED",
@@ -38,18 +36,33 @@ export const schedulingModeEnum = z.enum([
   "MANUAL_TRIGGER",
 ])
 
-// ---------- Step-Schemas ----------
+/** Quick-Items (Tasks/Habits) teilen sich dasselbe Schema */
+export const quickItemSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(2, "Zu kurz"),
+  durationMinutes: z.number().int().min(5).max(240).optional(), // für Habits optional
+  priority: z.number().int().min(1).max(5).default(3).optional(),
+})
+
+/* ===================== Step-Schemas ===================== */
+// 1) Arbeitszeiten
 export const workingHoursStepSchema = z
   .object({
     earliestTime: timeString,
     latestTime: timeString,
-    workingDays: z.array(z.number().min(0).max(6)).min(1, "Mind. 1 Tag wählen"),
+    workingDays: z.array(z.number().int().min(0).max(6)).min(1, "Mind. 1 Tag wählen"),
   })
   .refine(
     (v) => toMin(v.latestTime) > toMin(v.earliestTime),
     "Ende muss nach Start liegen"
   )
 
+// 2) Energieprofil
+export const energyStepSchema = z.object({
+  energyPreset: energyPresetEnum.default("balanced"),
+})
+
+// 3) Sperrzeiten
 export const excludedStepSchema = z
   .object({
     excluded: z.array(excludedPeriodSchema).default([]),
@@ -61,30 +74,36 @@ export const excludedStepSchema = z
     "Arbeitsfenster ungültig"
   )
 
+// 4) Scheduling (für deinen Wizard-Step erwartet)
 export const schedulingStepSchema = z.object({
   schedulingMode: schedulingModeEnum,
 })
 
+// 5) Quick-Items (für QuickItemsStep erwartet)
 export const quickItemsStepSchema = z.object({
   quickTasks: z.array(quickItemSchema).max(12).default([]),
   quickHabits: z.array(quickItemSchema).max(12).default([]),
 })
 
-// ---------- Gesamtdatentyp ----------
+/* ===================== Gesamtdatentyp (Onboarding) ===================== */
+/** Der Wizard erwartet diese Felder in OnboardingData. */
 export const onboardingSchema = z.object({
-  // kombiniert aus allen Steps
   earliestTime: timeString,
   latestTime: timeString,
-  workingDays: z.array(z.number().min(0).max(6)),
+  workingDays: z.array(z.number().int().min(0).max(6)),
   excluded: z.array(excludedPeriodSchema).default([]),
-  schedulingMode: schedulingModeEnum,
+
+  energyPreset: energyPresetEnum.default("balanced"),
+
+  schedulingMode: schedulingModeEnum.default("DAILY_INTERVAL"),
+
   quickTasks: z.array(quickItemSchema).default([]),
   quickHabits: z.array(quickItemSchema).default([]),
 })
 
 export type OnboardingData = z.infer<typeof onboardingSchema>
 
-// ---------- Normalisierung/Merging ----------
+/* ===================== Normalisierung/Merging ===================== */
 export function normalizeBlocks(
   blocks: Array<{ start: string; end: string; reason?: string }>,
   windowStart: string,
@@ -105,9 +124,18 @@ export function normalizeBlocks(
   const merged: typeof inRange = []
   for (const b of inRange) {
     const last = merged[merged.length - 1]
-    if (!last || b.s > last.e) merged.push({ ...b })
-    else last.e = Math.max(last.e, b.e)
+    if (!last || b.s > last.e) {
+      merged.push({ ...b })
+    } else {
+      last.e = Math.max(last.e, b.e)
+      if (last.reason && b.reason && last.reason !== b.reason) {
+        last.reason = `${last.reason}, ${b.reason}`
+      } else {
+        last.reason = last.reason ?? b.reason
+      }
+    }
   }
+
   return merged.map((b) => ({
     start: toHHMM(b.s),
     end: toHHMM(b.e),

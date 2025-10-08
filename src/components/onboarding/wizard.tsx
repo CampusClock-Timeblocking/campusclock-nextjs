@@ -9,7 +9,7 @@ import {
   workingHoursStepSchema,
   excludedStepSchema,
   schedulingStepSchema,
-  quickItemsStepSchema,
+  quickItemsStepSchema, // bleibt so – wir stellen es in schemas.ts sicher
   normalizeBlocks,
   toMin,
   type OnboardingData,
@@ -17,10 +17,11 @@ import {
 import { submitOnboarding } from "@/lib/submitOnboarding"
 
 // Steps
-import { WorkingHoursStep } from "./steps/WorkingHoursStep"
+import WorkingHoursStep from "./steps/WorkingHoursStep" // <-- default import!
 import { ExcludedPeriodsStep } from "./steps/ExcludedPeriodsStep"
 import { SchedulingStep } from "./steps/SchedulingStep"
 import { QuickItemsStep } from "./steps/QuickItemsStep"
+import { EnergyPresetStep } from "./steps/EnergyPresetStep"
 
 const STORAGE_KEY = "onboarding_draft_v1"
 const TOTAL_STEPS = 4
@@ -30,13 +31,13 @@ const DEFAULT_DATA: OnboardingData = {
   latestTime: "18:00",
   workingDays: [1, 2, 3, 4, 5],
   excluded: [],
+  energyPreset: "balanced",
   schedulingMode: "DAILY_INTERVAL",
   quickTasks: [],
   quickHabits: [],
 }
 
 function getInitialData(): OnboardingData {
-  // SSR-Guard
   if (typeof window === "undefined") return DEFAULT_DATA
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -50,26 +51,32 @@ function getInitialData(): OnboardingData {
 }
 
 export default function Wizard() {
+  // Mount-Gate gegen Hydration-Mismatch
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const [step, setStep] = useState(0)
   const [value, setValue] = useState<OnboardingData>(() => getInitialData())
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const headerRef = useRef<HTMLHeadingElement>(null)
 
+  // Always call useEffect hooks at the top level, not conditionally.
+
   // Autosave (debounced)
   useEffect(() => {
+    if (!mounted) return;
     const id = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-      } catch {
-        // ignore
-      }
+      } catch {}
     }, 400)
     return () => clearTimeout(id)
-  }, [value])
+  }, [value, mounted])
 
   // Leave protection
   useEffect(() => {
+    if (!mounted) return;
     const handler = (e: BeforeUnloadEvent) => {
       if (!submitted) {
         e.preventDefault()
@@ -78,30 +85,24 @@ export default function Wizard() {
     }
     window.addEventListener("beforeunload", handler)
     return () => window.removeEventListener("beforeunload", handler)
-  }, [submitted])
+  }, [submitted, mounted])
 
   // Fokus beim Step-Wechsel
   useEffect(() => {
+    if (!mounted) return;
     headerRef.current?.focus()
-  }, [step])
-
-  // Verfügbare Minuten (Arbeitsfenster – Excluded)
-  const availableMinutes = useMemo(() => {
-    const start = toMin(value.earliestTime)
-    const end = toMin(value.latestTime)
-    const window = Math.max(0, end - start)
-    const blocked = (value.excluded ?? []).reduce((acc, p) => {
-      const b = Math.max(0, toMin(p.end) - toMin(p.start))
-      return acc + b
-    }, 0)
-    return Math.max(0, window - blocked)
-  }, [value.earliestTime, value.latestTime, value.excluded])
-
-  // Geplante Minuten aus QuickTasks (Habits hier nicht auf Minuten umgelegt)
+  }, [step, mounted])
   const plannedMinutes = useMemo(() => {
-    const tasks: Array<{ durationMinutes?: number }> = value.quickTasks ?? []
-    return tasks.reduce((acc, t) => acc + (typeof t.durationMinutes === "number" ? t.durationMinutes : 0), 0)
+    return value.quickTasks.reduce((acc, t) => acc + (typeof t.durationMinutes === "number" ? t.durationMinutes : 0), 0)
   }, [value.quickTasks])
+
+  // Calculate available minutes based on working hours and working days
+  const availableMinutes = useMemo(() => {
+    const [startHour, startMinute] = value.earliestTime.split(":").map(Number)
+    const [endHour, endMinute] = value.latestTime.split(":").map(Number)
+    const minutesPerDay = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+    return minutesPerDay * (value.workingDays?.length ?? 0)
+  }, [value.earliestTime, value.latestTime, value.workingDays])
 
   const overbooked = plannedMinutes > availableMinutes
 
@@ -141,14 +142,14 @@ export default function Wizard() {
     if (overbooked) return
     setSubmitting(true)
     try {
-      onboardingSchema.parse(value) // finale Safety
+      onboardingSchema.parse(value)
       await submitOnboarding(value)
       setSubmitted(true)
       localStorage.removeItem(STORAGE_KEY)
-      // TODO: Router push zu /app/today
+      // TODO: router.push("/app/today")
     } catch (e) {
       console.error(e)
-      // TODO: Toast Fehleranzeige
+      // TODO: Toast
     } finally {
       setSubmitting(false)
     }
@@ -175,7 +176,7 @@ export default function Wizard() {
     setStep((s) => Math.max(0, s - 1))
   }, [])
 
-  // Keyboard Navigation (nach Deklaration der Handler)
+  // Keyboard Navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
@@ -185,7 +186,6 @@ export default function Wizard() {
           target.tagName === "TEXTAREA" ||
           target.tagName === "SELECT" ||
           target.getAttribute("role") === "textbox")
-
       if (isInput) return
 
       if (e.key === "ArrowRight") {
@@ -201,30 +201,27 @@ export default function Wizard() {
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [handleNext, handlePrev])
+  }, [handleNext, handlePrev, mounted])
 
-  // Render Step
-  const StepEl = (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={step}
-        initial={{ opacity: 0, x: 12 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -12 }}
-        transition={{ duration: 0.18 }}
-        className="space-y-6"
-      >
-        <h2 ref={headerRef} tabIndex={-1} className="text-xl font-semibold outline-none" aria-live="polite">
-          {["Arbeitszeiten", "Ausschlüsse", "Plan-Modus", "Schnell-Einträge"][step]}
-        </h2>
-
-        {step === 0 && <WorkingHoursStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
-        {step === 1 && <ExcludedPeriodsStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
-        {step === 2 && <SchedulingStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
-        {step === 3 && <QuickItemsStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
-      </motion.div>
-    </AnimatePresence>
-  )
+  if (!mounted) {
+    return (
+      <section className="flex min-h-[65vh] flex-col">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="h-5 w-40 rounded bg-neutral-100" />
+          <div className="h-4 w-20 rounded bg-neutral-100" />
+        </div>
+        <div className="flex-1 space-y-4">
+          <div className="h-6 w-1/2 rounded bg-neutral-100" />
+          <div className="h-28 w-full rounded-xl border bg-neutral-50" />
+          <div className="h-28 w-full rounded-xl border bg-neutral-50" />
+        </div>
+        <div className="mt-8 flex items-center justify-between gap-3">
+          <div className="h-9 w-24 rounded-md bg-neutral-100" />
+          <div className="h-9 w-28 rounded-md bg-neutral-900/10" />
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="flex flex-col min-h-[65vh]">
@@ -235,7 +232,13 @@ export default function Wizard() {
       </div>
 
       {/* Body */}
-      <div className="flex-1">{StepEl}</div>
+      <div className="flex-1">
+        {step === 0 && <WorkingHoursStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
+        {step === 1 && <ExcludedPeriodsStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
+        {step === 2 && <SchedulingStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
+        {step === 3 && <QuickItemsStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
+        {step === 4 && <EnergyPresetStep value={value} onChange={(v) => setValue((x) => ({ ...x, ...v }))} />}
+      </div>
 
       {/* Footer */}
       <div className="mt-8 flex items-center justify-between gap-3">
