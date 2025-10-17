@@ -1,12 +1,16 @@
+// src/app/(private)/onboarding/page.tsx
 
-export default async function Home() {
-  return (
+"use client"
 
-<main className="min-h-screen bg-neutral-50">
-      <div className="mx-auto max-w-3xl px-4 py-10">
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-      </div>
-    </main>       
+export default function OnboardingPage() {
+    const router = useRouter();
 
-  );
+    useEffect(() => {
+        router.push("/onboarding/welcome");
+    }, [router]);
+
+    return null;
 }
