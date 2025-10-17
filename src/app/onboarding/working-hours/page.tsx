@@ -1,21 +1,95 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
 
+// ---------- Utils ----------
+const STEP = 30 // Minuten
+const toHHMM = (min: number) => {
+  const m = Math.max(0, Math.min(23 * 60 + 59, Math.round(min)))
+  const h = String(Math.floor(m / 60)).padStart(2, "0")
+  const mm = String(m % 60).padStart(2, "0")
+  return `${h}:${mm}`
+}
+
+// ---------- Component ----------
 export default function WorkingHoursPage() {
   const router = useRouter()
+
+  // State für Zeitfenster & Arbeitstage
+  const [range, setRange] = useState<[number, number]>([8 * 60, 17 * 60])
+  const [days, setDays] = useState<string[]>(["Mo", "Di", "Mi", "Do", "Fr"])
+
+  const startHHMM = useMemo(() => toHHMM(range[0]), [range])
+  const endHHMM = useMemo(() => toHHMM(range[1]), [range])
+
+  const toggleDay = (d: string) =>
+    setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]))
+
+  const applyPreset = (label: "08–16" | "09–17" | "10–18") => {
+    const map: Record<typeof label, [number, number]> = {
+      "08–16": [8 * 60, 16 * 60],
+      "09–17": [9 * 60, 17 * 60],
+      "10–18": [10 * 60, 18 * 60],
+    }
+    setRange(map[label])
+  }
+
+  // ---------- Submit Handler ----------
+  const handleNext = async () => {
+    try {
+      const res = await fetch("/api/onboarding/step", {
+        method: "POST",
+        credentials: "include", // 👈 sendet Session-Cookies mit!
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          earliestTime: startHHMM,
+          latestTime: endHHMM,
+          workingDays: [...days].sort(
+            (a, b) =>
+              ["Mo","Di","Mi","Do","Fr","Sa","So"].indexOf(a) -
+              ["Mo","Di","Mi","Do","Fr","Sa","So"].indexOf(b)
+          ),
+        }),
+      })
+
+      if (res.ok) {
+        router.push("/onboarding/preferences")
+        return
+      }
+
+      // Fehler auslesen, falls vorhanden
+      let err: unknown = null
+      try {
+        err = await res.json()
+      } catch {
+        err = { status: res.status, statusText: res.statusText }
+      }
+
+      console.error("Onboarding step failed:", err)
+
+      if (res.status === 401) {
+        router.push("/auth") // ggf. Login erzwingen
+      }
+    } catch (e) {
+      console.error("Network error:", e)
+    }
+  }
+
+  // ---------- UI ----------
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-6">
-      {/* ---- Background Glow (subtle aesthetic layer) ---- */}
+      {/* Background Glow */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-blue-100 opacity-40 blur-3xl" />
         <div className="absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-emerald-100 opacity-40 blur-3xl" />
       </div>
 
-      {/* ---- Content ---- */}
+      {/* ---------- Content ---------- */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -56,7 +130,7 @@ export default function WorkingHoursPage() {
           Wir planen deinen Fokus rund um dein perfektes Zeitfenster.
         </motion.p>
 
-        {/* Slider Mock (visual only) */}
+        {/* ---------- Slider ---------- */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -67,31 +141,40 @@ export default function WorkingHoursPage() {
             <span>Start</span>
             <span>Ende</span>
           </div>
-          <div className="relative h-2 rounded-full bg-gray-100">
-            <div
-              className="absolute top-0 h-2 rounded-full bg-blue-500"
-              style={{ left: "15%", width: "70%" }}
+
+          <div className="px-1">
+            <Slider
+              value={range}
+              min={0}
+              max={24 * 60}
+              step={STEP}
+              onValueChange={(v) => {
+                const [s, e] = v as [number, number]
+                if (e - s < 60) return // min 60 Minuten Abstand
+                setRange([s, e])
+              }}
+              className="[&>.relative>.absolute.bg-primary]:bg-blue-500"
             />
-            <div className="absolute top-1/2 left-[15%] h-4 w-4 -translate-y-1/2 rounded-full bg-blue-500 shadow-md" />
-            <div className="absolute top-1/2 left-[85%] h-4 w-4 -translate-y-1/2 rounded-full bg-blue-500 shadow-md" />
           </div>
-          <div className="mt-4 flex justify-between text-sm text-gray-700">
-            <span>08:00</span>
-            <span>17:00</span>
+
+          <div className="mt-4 flex justify-between text-sm font-medium text-gray-800">
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">{startHHMM}</span>
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">{endHHMM}</span>
           </div>
         </motion.div>
 
-        {/* Quick Presets */}
+        {/* ---------- Quick Presets ---------- */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.4 }}
           className="mb-8 flex flex-wrap justify-center gap-3"
         >
-          {["08–16", "09–17", "10–18"].map((label) => (
+          {(["08–16", "09–17", "10–18"] as const).map((label) => (
             <motion.button
               key={label}
               whileHover={{ scale: 1.05 }}
+              onClick={() => applyPreset(label)}
               className="rounded-full border border-gray-200 bg-white/80 px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-blue-400 hover:text-blue-600"
             >
               {label}
@@ -99,27 +182,37 @@ export default function WorkingHoursPage() {
           ))}
         </motion.div>
 
-        {/* Weekdays */}
+        {/* ---------- Weekdays ---------- */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.4 }}
           className="mb-32 flex flex-wrap justify-center gap-2"
         >
-          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => (
-            <motion.button
-              key={d}
-              whileTap={{ scale: 0.9 }}
-              whileHover={{ scale: 1.1 }}
-              className="h-10 w-10 rounded-full bg-white text-sm font-medium text-gray-700 shadow-sm transition hover:bg-blue-100"
-            >
-              {d}
-            </motion.button>
-          ))}
+          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => {
+            const active = days.includes(d)
+            return (
+              <motion.button
+                key={d}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.08 }}
+                onClick={() => toggleDay(d)}
+                className={[
+                  "h-10 w-10 rounded-full text-sm font-medium shadow-sm transition",
+                  active
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-blue-100",
+                ].join(" ")}
+                aria-pressed={active}
+              >
+                {d}
+              </motion.button>
+            )
+          })}
         </motion.div>
       </motion.div>
 
-      {/* ---- Sticky Footer CTA ---- */}
+      {/* ---------- Footer CTA ---------- */}
       <motion.footer
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -129,10 +222,8 @@ export default function WorkingHoursPage() {
         <div className="mx-auto max-w-md px-6 py-4">
           <Button
             size="lg"
-            onClick={() => {
-              void handleNext(router);
-              window.location.href = '/onboarding/preferences';
-            }}
+            className="w-full rounded-full bg-black py-6 text-lg text-white shadow-md transition hover:bg-blue-600"
+            onClick={() => void handleNext()}
           >
             Weiter
           </Button>
@@ -140,19 +231,4 @@ export default function WorkingHoursPage() {
       </motion.footer>
     </main>
   )
-}
-
-async function handleNext(router: ReturnType<typeof useRouter>) {
-  const res = await fetch("/api/onboarding/step", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      earliestTime: "08:00",
-      latestTime: "17:00",
-      workingDays: ["Mo", "Di", "Mi", "Do", "Fr"],
-    }),
-  })
-
-  if (res.ok) router.push("/onboarding/preferences")
-  else console.error(await res.json())
 }
