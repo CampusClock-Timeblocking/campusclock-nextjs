@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client"
 
 declare global {
   // Verhindert Mehrfach-Instanzen im Dev durch Hot Reload
-  // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined
 }
 

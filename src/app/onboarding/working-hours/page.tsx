@@ -1,11 +1,12 @@
 "use client"
 
 import { motion } from "framer-motion"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
+import Image from "next/image"
+import { runWithViewTransition } from "@/lib/transition-nav"
 
 // ---------- Utils ----------
 const STEP = 30 // Minuten
@@ -58,7 +59,7 @@ export default function WorkingHoursPage() {
       })
 
       if (res.ok) {
-        router.push("/onboarding/preferences")
+        await runWithViewTransition(() => router.push("/onboarding/preferences"))
         return
       }
 
@@ -83,32 +84,43 @@ export default function WorkingHoursPage() {
   // ---------- UI ----------
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-6">
-      {/* Background Glow */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-blue-100 opacity-40 blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-emerald-100 opacity-40 blur-3xl" />
-      </div>
+      {/* Background Glow (mit ruhiger Bewegung) */}
+      <motion.div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-blue-100 opacity-40 blur-3xl"
+          animate={{ y: [0, -8, 0], scale: [1, 1.03, 1] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-emerald-100 opacity-40 blur-3xl"
+          animate={{ y: [0, 10, 0], scale: [1, 1.02, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </motion.div>
 
       {/* ---------- Content ---------- */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
         className="z-10 flex w-full max-w-md flex-col items-center text-center"
       >
-        {/* Illustration */}
+        {/* Illustration – Shared Element (gleiches viewTransitionName wie Welcome) */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
           className="mb-8"
         >
+          {/* WICHTIG: echtes <img> */}
           <Image
             src="/sunrise.png"
             alt="Illustration Arbeitszeiten"
             width={100}
             height={100}
-            className="drop-shadow-sm"
+            className="mx-auto drop-shadow-sm"
+            style={{ viewTransitionName: "cc-hero" }}
+            priority
           />
         </motion.div>
 
@@ -222,8 +234,12 @@ export default function WorkingHoursPage() {
         <div className="mx-auto max-w-md px-6 py-4">
           <Button
             size="lg"
-            className="w-full rounded-full bg-black py-6 text-lg text-white shadow-md transition hover:bg-blue-600"
-            onClick={() => void handleNext()}
+            className="w-full rounded-full bg-black py-6 text-lg text-white shadow-md transition hover:bg-blue-600 data-[state=loading]:opacity-70"
+            onClick={async (e) => {
+              const btn = e.currentTarget
+              btn.setAttribute("data-state", "loading")
+              await handleNext()
+            }}
           >
             Weiter
           </Button>

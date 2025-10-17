@@ -183,8 +183,8 @@ export const CreateWorkingPreferencesSchema = z.object({
 
         const [earliestHour, earliestMin] = earliest.split(':').map(Number);
         const [latestHour, latestMin] = latest.split(':').map(Number);
-        const earliestMinutes = (earliestHour || 0) * 60 + (earliestMin || 0);
-        const latestMinutes = (latestHour || 0) * 60 + (latestMin || 0);
+        const earliestMinutes = (earliestHour ?? 0) * 60 + (earliestMin ?? 0);
+        const latestMinutes = (latestHour ?? 0) * 60 + (latestMin ?? 0);
 
         return latestMinutes > earliestMinutes;
     },
