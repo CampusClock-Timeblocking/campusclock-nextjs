@@ -15,13 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -212,177 +211,167 @@ export function CalendarFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Calendar Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Calendar Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="My Calendar"
-                      {...field}
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <FieldSet>
+            <FieldGroup>
+              {/* Calendar Name */}
+              <Field data-invalid={!!form.formState.errors.name}>
+                <FieldLabel htmlFor="name">Calendar Name</FieldLabel>
+                <Input
+                  id="name"
+                  placeholder="My Calendar"
+                  {...form.register("name")}
+                  disabled={isCreating || isUpdating}
+                  aria-invalid={!!form.formState.errors.name}
+                />
+                <FieldError>
+                  {form.formState.errors.name?.message}
+                </FieldError>
+              </Field>
+
+              {/* Description (optional) */}
+              <Field data-invalid={!!form.formState.errors.description}>
+                <FieldLabel htmlFor="description">
+                  Description{" "}
+                  <span className="text-muted-foreground text-sm">
+                    (optional)
+                  </span>
+                </FieldLabel>
+                <Textarea
+                  id="description"
+                  placeholder="Calendar description..."
+                  className="resize-none"
+                  rows={3}
+                  {...form.register("description")}
+                  disabled={isCreating || isUpdating}
+                  aria-invalid={!!form.formState.errors.description}
+                />
+                <FieldError>
+                  {form.formState.errors.description?.message}
+                </FieldError>
+              </Field>
+
+              {/* Color Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <RiPaletteLine className="h-4 w-4" />
+                  <FieldLabel>Calendar Color</FieldLabel>
+                </div>
+
+                {/* Color Presets */}
+                <div className="grid grid-cols-4 gap-3">
+                  {DEFAULT_COLORS.map((color, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleColorSelect(index)}
+                      className={`h-12 w-full rounded-lg border-2 transition-all hover:scale-105 ${
+                        selectedColorIndex === index
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                      style={{ backgroundColor: color.bg }}
                       disabled={isCreating || isUpdating}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    >
+                      <div
+                        className="mx-auto h-2 w-8 rounded-full"
+                        style={{ backgroundColor: color.fg }}
+                      />
+                    </button>
+                  ))}
+                </div>
 
-            {/* Description (optional) */}
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Description{" "}
-                    <span className="text-muted-foreground text-sm">
-                      (optional)
-                    </span>
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Calendar description..."
-                      className="resize-none"
-                      rows={3}
-                      {...field}
-                      disabled={isCreating || isUpdating}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                {/* Custom Color Inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Field data-invalid={!!form.formState.errors.backgroundColor}>
+                    <FieldLabel htmlFor="backgroundColor" className="text-sm">
+                      Background
+                    </FieldLabel>
+                    <div className="flex gap-2">
+                      <Input
+                        id="backgroundColor"
+                        {...form.register("backgroundColor")}
+                        disabled={isCreating || isUpdating}
+                        placeholder="#3b82f6"
+                        aria-invalid={!!form.formState.errors.backgroundColor}
+                      />
+                      <div
+                        className="h-10 w-12 shrink-0 rounded border"
+                        style={{ backgroundColor }}
+                      />
+                    </div>
+                    <FieldError>
+                      {form.formState.errors.backgroundColor?.message}
+                    </FieldError>
+                  </Field>
 
-            {/* Color Selection */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <RiPaletteLine className="h-4 w-4" />
-                <FormLabel>Calendar Color</FormLabel>
-              </div>
+                  <Field data-invalid={!!form.formState.errors.foregroundColor}>
+                    <FieldLabel htmlFor="foregroundColor" className="text-sm">
+                      Text
+                    </FieldLabel>
+                    <div className="flex gap-2">
+                      <Input
+                        id="foregroundColor"
+                        {...form.register("foregroundColor")}
+                        disabled={isCreating || isUpdating}
+                        placeholder="#ffffff"
+                        aria-invalid={!!form.formState.errors.foregroundColor}
+                      />
+                      <div
+                        className="h-10 w-12 shrink-0 rounded border"
+                        style={{ backgroundColor: foregroundColor }}
+                      />
+                    </div>
+                    <FieldError>
+                      {form.formState.errors.foregroundColor?.message}
+                    </FieldError>
+                  </Field>
+                </div>
 
-              {/* Color Presets */}
-              <div className="grid grid-cols-4 gap-3">
-                {DEFAULT_COLORS.map((color, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleColorSelect(index)}
-                    className={`h-12 w-full rounded-lg border-2 transition-all hover:scale-105 ${
-                      selectedColorIndex === index
-                        ? "border-primary ring-2 ring-primary/20"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                    style={{ backgroundColor: color.bg }}
-                    disabled={isCreating || isUpdating}
+                {/* Color Preview */}
+                <div className="rounded-lg border p-4">
+                  <div
+                    className="rounded px-3 py-2 text-center text-sm font-medium"
+                    style={{
+                      backgroundColor,
+                      color: foregroundColor,
+                    }}
                   >
-                    <div
-                      className="mx-auto h-2 w-8 rounded-full"
-                      style={{ backgroundColor: color.fg }}
-                    />
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom Color Inputs */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="backgroundColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">Background</FormLabel>
-                      <FormControl>
-                        <div className="flex gap-2">
-                          <Input
-                            {...field}
-                            disabled={isCreating || isUpdating}
-                            placeholder="#3b82f6"
-                          />
-                          <div
-                            className="h-10 w-12 shrink-0 rounded border"
-                            style={{ backgroundColor: field.value }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="foregroundColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">Text</FormLabel>
-                      <FormControl>
-                        <div className="flex gap-2">
-                          <Input
-                            {...field}
-                            disabled={isCreating || isUpdating}
-                            placeholder="#ffffff"
-                          />
-                          <div
-                            className="h-10 w-12 shrink-0 rounded border"
-                            style={{ backgroundColor: field.value }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Color Preview */}
-              <div className="rounded-lg border p-4">
-                <div
-                  className="rounded px-3 py-2 text-center text-sm font-medium"
-                  style={{
-                    backgroundColor,
-                    color: foregroundColor,
-                  }}
-                >
-                  Preview: {form.watch("name") || "Calendar Name"}
+                    Preview: {form.watch("name") || "Calendar Name"}
+                  </div>
                 </div>
               </div>
-            </div>
+            </FieldGroup>
+          </FieldSet>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={isCreating || isUpdating}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isCreating || isUpdating}
-                className="gap-2"
-              >
-                {isCreating || isUpdating ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    {isEditing ? "Updating..." : "Creating..."}
-                  </>
-                ) : (
-                  <>
-                    <RiCalendar2Line className="h-4 w-4" />
-                    {isEditing ? "Update Calendar" : "Create Calendar"}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isCreating || isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isCreating || isUpdating}
+              className="gap-2"
+            >
+              {isCreating || isUpdating ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  {isEditing ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                <>
+                  <RiCalendar2Line className="h-4 w-4" />
+                  {isEditing ? "Update Calendar" : "Create Calendar"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

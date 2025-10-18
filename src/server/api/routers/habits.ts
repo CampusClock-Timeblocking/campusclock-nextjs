@@ -1,4 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { PeriodUnit } from "@prisma/client";
 import { z } from "zod";
 
 export const habitsRouter = createTRPCRouter({
@@ -19,6 +20,7 @@ export const habitsRouter = createTRPCRouter({
         preferredTime: z.string(),
         durationMinutes: z.number(),
         active: z.boolean(),
+        recurrenceType: z.enum(PeriodUnit),
       }),
     )
     .mutation(async ({ ctx, input }) => {
