@@ -41,6 +41,7 @@ interface MonthViewProps {
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  readOnlyCalendarIds?: Set<string>;
 }
 
 export function MonthView({
@@ -48,6 +49,7 @@ export function MonthView({
   events,
   onEventSelect,
   onEventCreate,
+  readOnlyCalendarIds = new Set(),
 }: MonthViewProps) {
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -210,6 +212,7 @@ export function MonthView({
                               onClick={(e) => handleEventClick(event, e)}
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
+                              isReadOnly={readOnlyCalendarIds.has(event.calendarId)}
                             />
                           </div>
                         );

@@ -56,15 +56,28 @@ function EventWrapper({
     : new Date(event.end);
 
   const isEventInPast = isPast(displayEnd);
+  
+  // Check if the color is a custom color (hex or rgb)
+  const isCustomColor = event.color?.startsWith('#') || event.color?.startsWith('rgb');
+
+  const isDraggable = dndListeners !== undefined;
 
   return (
     <button
       className={cn(
-        "focus-visible:border-ring focus-visible:ring-ring/50 flex size-full overflow-hidden px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:cursor-grabbing data-dragging:shadow-lg data-past-event:line-through sm:px-2",
+        "focus-visible:border-ring focus-visible:ring-ring/50 flex size-full overflow-hidden px-1 text-left font-medium backdrop-blur-md transition outline-none select-none focus-visible:ring-[3px] data-dragging:shadow-lg data-past-event:line-through sm:px-2",
+        isDraggable ? "cursor-grab data-dragging:cursor-grabbing" : "cursor-pointer",
         getEventColorClasses(event.color),
         getBorderRadiusClasses(isFirstDay, isLastDay),
         className,
       )}
+      style={
+        isCustomColor
+          ? ({
+              "--event-color": event.color,
+            } as React.CSSProperties)
+          : undefined
+      }
       data-dragging={isDragging ?? undefined}
       data-past-event={isEventInPast || undefined}
       onClick={onClick}
@@ -220,13 +233,24 @@ export function EventItem({
   }
 
   // Agenda view - kept separate since it's significantly different
+  const isCustomColor = eventColor?.startsWith('#') || eventColor?.startsWith('rgb');
+  const isDraggable = dndListeners !== undefined;
+  
   return (
     <button
       className={cn(
         "focus-visible:border-ring focus-visible:ring-ring/50 flex w-full flex-col gap-1 rounded p-2 text-left transition outline-none focus-visible:ring-[3px] data-past-event:line-through data-past-event:opacity-90",
+        isDraggable ? "cursor-grab" : "cursor-pointer",
         getEventColorClasses(eventColor),
         className,
       )}
+      style={
+        isCustomColor
+          ? ({
+              "--event-color": eventColor,
+            } as React.CSSProperties)
+          : undefined
+      }
       data-past-event={isPast(new Date(event.end)) || undefined}
       onClick={onClick}
       onMouseDown={onMouseDown}

@@ -19,6 +19,7 @@ interface DraggableEventProps {
   isFirstDay?: boolean;
   isLastDay?: boolean;
   "aria-hidden"?: boolean | "true" | "false";
+  isReadOnly?: boolean;
 }
 
 export function DraggableEvent({
@@ -32,6 +33,7 @@ export function DraggableEvent({
   isFirstDay = true,
   isLastDay = true,
   "aria-hidden": ariaHidden,
+  isReadOnly = false,
 }: DraggableEventProps) {
   const { activeId } = useCalendarDnd();
   const elementRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,7 @@ export function DraggableEvent({
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
   const isMultiDayEvent =
-    isMultiDay || event.allDay || differenceInDays(eventEnd, eventStart) >= 1;
+    isMultiDay ?? (event.allDay ?? differenceInDays(eventEnd, eventStart) >= 1);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -52,13 +54,14 @@ export function DraggableEvent({
       data: {
         event,
         view,
-        height: height || elementRef.current?.offsetHeight || null,
+        height: height ?? elementRef.current?.offsetHeight ?? null,
         isMultiDay: isMultiDayEvent,
         multiDayWidth: multiDayWidth,
         dragHandlePosition,
         isFirstDay,
         isLastDay,
       },
+      disabled: isReadOnly, // Disable dragging for read-only events
     });
 
   // Handle mouse down to track where on the event the user clicked
@@ -78,7 +81,7 @@ export function DraggableEvent({
       <div
         ref={setNodeRef}
         className="opacity-0"
-        style={{ height: height || "auto" }}
+        style={{ height: height ?? "auto" }}
       />
     );
   }
@@ -86,12 +89,12 @@ export function DraggableEvent({
   const style = transform
     ? {
         transform: CSS.Translate.toString(transform),
-        height: height || "auto",
+        height: height ?? "auto",
         width:
           isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
       }
     : {
-        height: height || "auto",
+        height: height ?? "auto",
         width:
           isMultiDayEvent && multiDayWidth ? `${multiDayWidth}%` : undefined,
       };
@@ -117,7 +120,7 @@ export function DraggableEvent({
         if (elementRef) elementRef.current = node;
       }}
       style={style}
-      className="touch-none"
+      className={isReadOnly ? undefined : "touch-none"}
     >
       <EventItem
         event={event}
@@ -127,10 +130,10 @@ export function DraggableEvent({
         isLastDay={isLastDay}
         isDragging={isDragging}
         onClick={onClick}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        dndListeners={listeners}
-        dndAttributes={attributes}
+        onMouseDown={isReadOnly ? undefined : handleMouseDown}
+        onTouchStart={isReadOnly ? undefined : handleTouchStart}
+        dndListeners={isReadOnly ? undefined : listeners}
+        dndAttributes={isReadOnly ? undefined : attributes}
         aria-hidden={ariaHidden}
       />
     </div>
