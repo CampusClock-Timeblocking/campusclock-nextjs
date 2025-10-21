@@ -28,6 +28,7 @@ model User {
   schedulingConfig   SchedulingConfig?
   workingPreferences WorkingPreferences?
   excludedPeriods    ExcludedPeriod[]
+  Calendars          Calendar[]
 
   @@unique([email])
   @@map("user")
@@ -143,7 +144,6 @@ model Task {
   scheduledTime   String?
 
   // Relationships
-  scheduleBlocks  ScheduleBlock[] // Provides flexibility for future task splitting (for now only one block)
   taskCompletions TaskCompletion[] // For task completion tracking
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -151,6 +151,7 @@ model Task {
   project         Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   habitId         String?
   habit           Habit?           @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  Event           Event[]
 
   @@map("tasks")
 }
@@ -177,18 +178,60 @@ model Habit {
   @@map("habits")
 }
 
-// REVIEW: Models for schedule and completion tracking could be merged into one model
-model ScheduleBlock {
-  id        String   @id @default(uuid())
-  startTime DateTime
-  endTime   DateTime
+model Calendar {
+  id              String @id @default(uuid())
+  name            String
+  backgroundColor String
+  foregroundColor String
+
+  type CalendarType @default(LOCAL)
+
+  provider   CalendarProvider?
+  externalId String?
+  readOnly   Boolean           @default(true)
+
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Event  Event[]
+
+  @@unique([userId, provider, externalId])
+  @@index([userId, type])
+  @@index([provider, externalId])
+  @@map("calendars")
+}
+
+enum CalendarType {
+  LOCAL
+  EXTERNAL
+
+  @@map("calendar_type")
+}
+
+enum CalendarProvider {
+  GOOGLE
+
+  @@map("calendar_provider")
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  start       DateTime
+  end         DateTime
+  allDay      Boolean  @default(false)
+  color       String
+  location    String?
 
   // Relationships
-  taskId String
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@index([taskId])
-  @@map("schedule_blocks")
+  calendarId String
+  calendar   Calendar @relation(fields: [calendarId], references: [id])
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("events")
 }
 
 model TaskCompletion {

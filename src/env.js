@@ -11,10 +11,15 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    NOTION_CLIENT_ID: z.string(),
-    NOTION_CLIENT_SECRET: z.string(),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.string().url().optional(),
+    GOOGLE_CLIENT_ID: z.string(),
+    GOOGLE_CLIENT_SECRET: z.string(),
+    KV_URL: z.string(),
+    KV_REST_API_URL: z.string().url(),
+    KV_REST_API_TOKEN: z.string(),
+    KV_REST_API_READ_ONLY_TOKEN: z.string(),
+    REDIS_URL: z.string(),
   },
 
   /**
@@ -33,10 +38,15 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
-    NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,
-    NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    KV_URL: process.env.KV_URL,
+    KV_REST_API_URL: process.env.KV_REST_API_URL,
+    KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
+    KV_REST_API_READ_ONLY_TOKEN: process.env.KV_REST_API_READ_ONLY_TOKEN,
+    REDIS_URL: process.env.REDIS_URL,
     // Add more server-side env vars here if needed
     // e.g. NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
     // Note: Only add client-side env vars here that are prefixed with `NEXT_PUBLIC_`
