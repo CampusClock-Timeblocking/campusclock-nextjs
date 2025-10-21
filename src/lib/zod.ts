@@ -33,15 +33,18 @@ export const PeriodUnitSchema = z.enum([
     "YEAR"
 ]);
 
+export const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const
+export const energyProfiles = ["EARLY_BIRD", "BALANCED", "NIGHT_OWL"] as const
+
 /* Common Schemas */
+
+export const weekdaySchema = z.enum(weekdays)
+const weekdaysSchema = weekdaySchema.array().min(1, { message: "Select at least one day" }).max(7)
+export type Weekday = z.infer<typeof weekdaySchema>
 
 const titleSchema = z.string().min(1, "Title is required").max(200);
 const descriptionSchema = z.string().max(2000);
 const prioritySchema = z.int().min(1).max(10);
-
-const weekDaySchema = z.int().min(0).max(6);
-const weekdaysSchema = weekDaySchema.array().max(7).default([0, 1, 2, 3, 4, 5, 6]).refine((weekdays) =>
-    new Set(weekdays).size === weekdays.length, "Weekdays must be unique");
 
 /* User Schemas */
 
@@ -159,13 +162,23 @@ export const UpdateSchedulingConfigSchema = CreateSchedulingConfigSchema.partial
 
 /* Working Preferences Schemas */
 
-export const CreateWorkingPreferencesSchema = z.object({
+export const WorkingHoursSchema = z.object({
     // Hours + availability
     earliestTime: z.iso.time(),
     latestTime: z.iso.time(),
+    workingDays: weekdaysSchema,
+});
+export type WorkingHours = z.infer<typeof WorkingHoursSchema>
+
+export const PreferencesInput = z.object({
+    energyProfile: z.enum(energyProfiles)
+});
+export type Preferences = z.infer<typeof PreferencesInput>;
+
+export const CreateWorkingPreferencesSchema = WorkingHoursSchema.extend({
+    // Hours + availability
     dailyMaxMinutes: z.int().min(60).max(1440).default(600), // 1 hour to 24 hours
     dailyOptimalMinutes: z.int().min(30).max(1440).default(480), // 30 min to 24 hours
-    workingDays: weekdaysSchema.default([0, 1, 2, 3, 4, 5, 6]),
 
     // Rhythm + breaks
     focusPeriodMinutes: z.int().min(15).max(480).default(60), // 15 min to 8 hours

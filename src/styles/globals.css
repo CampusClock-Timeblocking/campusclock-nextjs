@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@daveyplate/better-auth-ui/css";
-@import "rc-slider/assets/index.css";
 
 
 @custom-variant dark (&:is(.dark *));
@@ -124,33 +123,5 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-/* ===== View Transitions – globaler Seitenwechsel ===== */
-@media (prefers-reduced-motion: no-preference) {
-  /* Root-Fade/Scale beim Routen */
-  ::view-transition-old(root) {
-    animation: cc-fade-out 240ms ease both;
-  }
-  ::view-transition-new(root) {
-    animation: cc-fade-in 280ms cubic-bezier(.2,.7,.2,1) both;
-  }
-  @keyframes cc-fade-out {
-    from { opacity: 1; filter: blur(0px) }
-    to   { opacity: 0; transform: translateY(-4px) scale(.995); filter: blur(2px) }
-  }
-  @keyframes cc-fade-in {
-    from { opacity: 0; transform: translateY(6px) scale(.995); filter: blur(2px) }
-    to   { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0) }
-  }
-
-  /* Shared-Element Gruppe (Logo/Illustration) */
-  ::view-transition-group(cc-hero) {
-    animation-duration: 360ms;
-    animation-timing-function: cubic-bezier(.2,.7,.2,1);
-  }
-  ::view-transition-image-pair(cc-hero) {
-    isolation: auto; /* verhindert Clipping-Artefakte */
   }
 }

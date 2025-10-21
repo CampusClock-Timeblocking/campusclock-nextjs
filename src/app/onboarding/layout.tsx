@@ -1,25 +1,11 @@
-"use client"
-
-import { AnimatePresence, motion } from "framer-motion"
-import { usePathname } from "next/navigation"
+import { SessionGuard } from "@/components/SessionGuard"
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-
-
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -8, filter: "blur(6px)" }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="min-h-[100dvh]"
-      >
+    <SessionGuard>
+      <main className="px-4 sm:px-6 py-10 max-w-xl mx-auto min-h-[100dvh] flex flex-col justify-center">
         {children}
-      </motion.div>
-    </AnimatePresence>
+      </main>
+    </SessionGuard>
   )
 }
