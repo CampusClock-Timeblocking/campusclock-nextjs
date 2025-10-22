@@ -1,17 +1,17 @@
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient } from "@prisma/client";
 
-declare global {
-  // Verhindert Mehrfach-Instanzen im Dev durch Hot Reload
-  var prisma: PrismaClient | undefined
-}
+import { env } from "@/env";
 
-export const prisma =
-  global.prisma ??
+const createPrismaClient = () =>
   new PrismaClient({
     log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-  })
+      env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  });
 
-if (process.env.NODE_ENV !== "production") global.prisma = prisma
+const globalForPrisma = globalThis as unknown as {
+  prisma: ReturnType<typeof createPrismaClient> | undefined;
+};
+
+export const db = globalForPrisma.prisma ?? createPrismaClient();
+
+if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;

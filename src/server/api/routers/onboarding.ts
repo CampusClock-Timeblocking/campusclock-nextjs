@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server"
 
-import { prisma } from "@/server/db"
+import { db } from "@/server/db"
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc"
 import { WorkingHoursSchema, PreferencesInput } from "@/lib/zod"
 
@@ -27,7 +27,7 @@ export const onboardingRouter = createTRPCRouter({
                 return new Date(Date.UTC(1970, 0, 1, h ?? 0, m ?? 0, 0))
             }
 
-            await prisma.workingPreferences.upsert({
+            await db.workingPreferences.upsert({
                 where: { userId },
                 update: {
                     earliestTime: toDate(input.earliestTime),
@@ -53,7 +53,7 @@ export const onboardingRouter = createTRPCRouter({
             const userId = ctx.session?.user?.id
             if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" })
 
-            await prisma.workingPreferences.upsert({
+            await db.workingPreferences.upsert({
                 where: { userId },
                 update: { alertnessByHour: energyPresets[input.energyProfile] },
                 create: {
