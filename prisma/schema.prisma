@@ -119,6 +119,7 @@ model Project {
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
 
+  @@unique([userId, title])
   @@index([userId, status])
   @@map("projects")
 }
@@ -187,7 +188,7 @@ model Calendar {
   type CalendarType @default(LOCAL)
 
   provider   CalendarProvider?
-  externalId String?           @unique
+  externalId String?
   readOnly   Boolean           @default(true)
 
   userId String

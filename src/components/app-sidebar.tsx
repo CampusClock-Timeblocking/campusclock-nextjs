@@ -90,7 +90,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   asChild
                   className="has-focus-visible:border-ring has-focus-visible:ring-ring/50 relative rounded-md has-focus-visible:ring-[3px]"
                 >
-                  <Link href="/calendar">
+                  <Link href="/tasks">
                     <RiTodoLine className="size-4" />
                     Projects, Tasks & Habits
                   </Link>

@@ -29,15 +29,20 @@ export class GCalService {
     }
 
     for (const calendar of calendars) {
+      console.log(calendar);
       await this.db.calendar.upsert({
-        where: { userId, externalId: calendar.id ?? "" },
+        where: {
+          userId_provider_externalId: {
+            userId,
+            provider: CalendarProvider.GOOGLE,
+            externalId: calendar.id ?? "",
+          },
+        },
         update: {
           name: calendar.name ?? "",
           backgroundColor: calendar.backgroundColor ?? "#000000",
           foregroundColor: calendar.foregroundColor ?? "#000000",
           type: CalendarType.EXTERNAL,
-          provider: CalendarProvider.GOOGLE,
-          externalId: calendar.id,
           readOnly: true,
         },
         create: {
@@ -123,14 +128,18 @@ export class GCalService {
     // Transform Google Calendar events to Prisma Event format
     return (
       events.data.items
-        ?.filter((event) => event.id && event.summary && event.start && event.end)
+        ?.filter(
+          (event) => event.id && event.summary && event.start && event.end,
+        )
         .map((event) => ({
           id: `gcal-${event.id}`, // Prefix to avoid conflicts with local events
           title: event.summary!,
           description: event.description ?? null,
           start: new Date(event.start!.dateTime ?? event.start!.date!),
           end: new Date(event.end!.dateTime ?? event.end!.date!),
-          allDay: event.start!.dateTime === undefined && event.end!.dateTime === undefined,
+          allDay:
+            event.start!.dateTime === undefined &&
+            event.end!.dateTime === undefined,
           color: calendar.backgroundColor,
           location: event.location ?? null,
           calendarId: calendar.id,
