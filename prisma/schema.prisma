@@ -275,7 +275,7 @@ model WorkingPreferences {
   latestTime          DateTime @db.Time()
   dailyMaxMinutes     Int      @default(600) // absolute cap
   dailyOptimalMinutes Int      @default(480) // ideal working time
-  workingDays         Int[]    @default([0, 1, 2, 3, 4, 5, 6]) // 0-6, 0 is Sunday
+  workingDays         Weekday[]    @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY])
 
   // Rhythm + breaks
   focusPeriodMinutes Int @default(60) // duration of focus sessions
@@ -289,6 +289,16 @@ model WorkingPreferences {
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Weekday {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
 }
 
 model ExcludedPeriod {

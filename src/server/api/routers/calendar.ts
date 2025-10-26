@@ -4,6 +4,11 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { GCalService } from "@/server/api/services/g-cal-service";
 import { CalendarType } from "@prisma/client";
 import { CalendarService } from "@/server/api/services/calendar-service";
+import { EventService } from "@/server/api/services/event-service";
+import {
+  CreateEventSchema,
+  UpdateEventSchema,
+} from "@/lib/zod";
 
 export const calendarRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -130,5 +135,42 @@ export const calendarRouter = createTRPCRouter({
         input.start,
         input.end,
       );
+    }),
+
+  // Event management endpoints
+  createEvent: protectedProcedure
+    .input(CreateEventSchema)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.db);
+      return await eventService.createEvent(ctx.session.user.id, input);
+    }),
+
+  updateEvent: protectedProcedure
+    .input(UpdateEventSchema)
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.db);
+      return await eventService.updateEvent(ctx.session.user.id, input);
+    }),
+
+  deleteEvent: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.db);
+      return await eventService.deleteEvent(ctx.session.user.id, input.id);
+    }),
+
+  getEvent: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const eventService = new EventService(ctx.db);
+      return await eventService.getEvent(ctx.session.user.id, input.id);
     }),
 });

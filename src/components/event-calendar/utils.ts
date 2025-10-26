@@ -8,6 +8,11 @@ import type { CalendarEvent, EventColor } from "@/components/event-calendar/even
 export function getEventColorClasses(color?: EventColor | string): string {
   const eventColor = color || "sky";
 
+  // Check if the color is a hex code or rgb value (custom color)
+  if (eventColor.startsWith('#') || eventColor.startsWith('rgb')) {
+    return "bg-[color-mix(in_srgb,var(--event-color)_50%,transparent)] hover:bg-[color-mix(in_srgb,var(--event-color)_40%,transparent)] text-[color-mix(in_srgb,var(--event-color)_90%,black)] dark:bg-[color-mix(in_srgb,var(--event-color)_25%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--event-color)_20%,transparent)] dark:text-[color-mix(in_srgb,var(--event-color)_80%,white)]";
+  }
+
   switch (eventColor) {
     case "sky":
       return "bg-blue-200/50 hover:bg-blue-200/40 text-blue-900/90 dark:bg-blue-400/25 dark:hover:bg-blue-400/20 dark:text-blue-200 shadow-blue-700/8";

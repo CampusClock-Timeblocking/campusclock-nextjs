@@ -1,3 +1,5 @@
+import { postRouter } from "@/server/api/routers/post";
+import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { calendarRouter } from "./routers/calendar";
 import { taskRouter } from "./routers/tasks";
@@ -10,6 +12,8 @@ import { habitRouter } from "./routers/habits";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  post: postRouter,
+  onboarding: onboardingRouter,
   calendar: calendarRouter,
   task: taskRouter,
   project: projectsRouter,

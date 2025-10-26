@@ -9,6 +9,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { CalendarType } from "@prisma/client";
 import {
   RiCalendar2Line,
@@ -182,13 +198,10 @@ export default function CalendarsPage() {
               </p>
             </div>
 
-            <div className="space-y-3">
+            <ItemGroup className="gap-3">
               {localCalendars.map((calendar) => (
-                <div
-                  key={calendar.id}
-                  className="border-border bg-background/50 flex items-center justify-between rounded-lg border px-6 py-4 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
+                <Item key={calendar.id} variant="outline">
+                  <ItemMedia>
                     <div
                       className="h-4 w-4 rounded-full border-2"
                       style={{
@@ -196,49 +209,48 @@ export default function CalendarsPage() {
                         borderColor: calendar.backgroundColor ?? "#3b82f6",
                       }}
                     />
-                    <div className="space-y-1">
-                      <p className="leading-none font-medium">
-                        {calendar.name}
-                      </p>
-                    </div>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <RiMore2Line className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[180px]">
-                      <DropdownMenuItem
-                        onClick={() => handleEditCalendar(calendar.id)}
-                        className="gap-2"
-                      >
-                        <RiEditLine className="h-4 w-4" />
-                        Edit Calendar
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteAllEvents(calendar.id)}
-                        className="gap-2 text-orange-600"
-                      >
-                        <RiDeleteBin2Line className="h-4 w-4" />
-                        Delete All Events
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteCalendar(calendar.id, false)}
-                        className="text-destructive gap-2"
-                        disabled={countOfLocalCalendars === 1}
-                      >
-                        <RiDeleteBinLine className="h-4 w-4" />
-                        Delete Calendar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{calendar.name}</ItemTitle>
+                  </ItemContent>
+                  <ItemActions>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <RiMore2Line className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[180px]">
+                        <DropdownMenuItem
+                          onClick={() => handleEditCalendar(calendar.id)}
+                          className="gap-2"
+                        >
+                          <RiEditLine className="h-4 w-4" />
+                          Edit Calendar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteAllEvents(calendar.id)}
+                          className="gap-2 text-orange-600"
+                        >
+                          <RiDeleteBin2Line className="h-4 w-4" />
+                          Delete All Events
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteCalendar(calendar.id, false)}
+                          className="text-destructive gap-2"
+                          disabled={countOfLocalCalendars === 1}
+                        >
+                          <RiDeleteBinLine className="h-4 w-4" />
+                          Delete Calendar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </ItemActions>
+                </Item>
               ))}
-            </div>
+            </ItemGroup>
           </div>
         )}
 
@@ -264,13 +276,10 @@ export default function CalendarsPage() {
             </p>
           </div>
           {googleCalendars && googleCalendars.length > 0 ? (
-            <div className="space-y-3">
+            <ItemGroup className="gap-3">
               {googleCalendars.map((calendar) => (
-                <div
-                  key={calendar.id}
-                  className="border-border bg-background/50 flex items-center justify-between rounded-lg border px-6 py-4 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
+                <Item key={calendar.id} variant="outline">
+                  <ItemMedia>
                     <div
                       className="h-4 w-4 rounded-full border-2"
                       style={{
@@ -278,78 +287,86 @@ export default function CalendarsPage() {
                         borderColor: calendar.backgroundColor ?? "#34a853",
                       }}
                     />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="leading-none font-medium">
-                          {calendar.name}
-                        </p>
-                        <RiGoogleLine className="text-muted-foreground h-3 w-3" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <RiMore2Line className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[180px]">
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteCalendar(calendar.id, true)}
-                        className="text-destructive gap-2"
-                      >
-                        <RiDeleteBinLine className="h-4 w-4" />
-                        Remove Calendar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>
+                      {calendar.name}
+                      <RiGoogleLine className="text-muted-foreground h-3 w-3" />
+                    </ItemTitle>
+                  </ItemContent>
+                  <ItemActions>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <RiMore2Line className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[180px]">
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteCalendar(calendar.id, true)}
+                          className="text-destructive gap-2"
+                        >
+                          <RiDeleteBinLine className="h-4 w-4" />
+                          Remove Calendar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </ItemActions>
+                </Item>
               ))}
-            </div>
+            </ItemGroup>
           ) : (
-            <div className="flex flex-col items-center justify-center text-center">
-              <h3 className="mb-2 text-xl font-semibold">No calendars found</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm">
-                Get started by creating a local calendar or syncing your Google
-                calendars.
-              </p>
-              <Button variant="outline" className="gap-2" onClick={handleSyncGoogleCalendars}>  
-                <RiAddLine className="h-4 w-4" />
-                Sync from Google Calendar
-              </Button>
-            </div>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <RiCalendar2Line />
+                </EmptyMedia>
+                <EmptyTitle>No Google Calendars Found</EmptyTitle>
+                <EmptyDescription>
+                  Connect your Google account to sync your calendars with CampusClock.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button variant="outline" className="gap-2" onClick={handleSyncGoogleCalendars}>
+                  <RiGoogleLine className="h-4 w-4" />
+                  Sync from Google Calendar
+                </Button>
+              </EmptyContent>
+            </Empty>
           )}
         </div>
 
         {/* Empty State */}
         {(!localCalendars || localCalendars.length === 0) &&
           (!googleCalendars || googleCalendars.length === 0) && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-                <RiCalendar2Line className="text-muted-foreground h-8 w-8" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">No calendars found</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm">
-                Get started by creating a local calendar or syncing your Google
-                calendars.
-              </p>
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  className="gap-2"
-                  onClick={handleCreateCalendar}
-                >
-                  <RiAddLine className="h-4 w-4" />
-                  Create Calendar
-                </Button>
-                <Button onClick={handleSyncGoogleCalendars} className="gap-2">
-                  <RiGoogleLine className="h-4 w-4" />
-                  Sync Google Calendars
-                </Button>
-              </div>
-            </div>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <RiCalendar2Line />
+                </EmptyMedia>
+                <EmptyTitle>No Calendars Found</EmptyTitle>
+                <EmptyDescription>
+                  Get started by creating a local calendar or syncing your Google calendars.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={handleCreateCalendar}
+                  >
+                    <RiAddLine className="h-4 w-4" />
+                    Create Calendar
+                  </Button>
+                  <Button onClick={handleSyncGoogleCalendars} className="gap-2">
+                    <RiGoogleLine className="h-4 w-4" />
+                    Sync Google Calendars
+                  </Button>
+                </div>
+              </EmptyContent>
+            </Empty>
           )}
       </div>
 

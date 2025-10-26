@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   addHours,
   areIntervalsOverlapping,
@@ -31,6 +31,9 @@ interface DayViewProps {
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  readOnlyCalendarIds?: Set<string>;
+  hoveredSlot?: { date: Date; time?: number } | null;
+  onSlotHover?: (slot: { date: Date; time?: number } | null) => void;
 }
 
 interface PositionedEvent {
@@ -47,13 +50,34 @@ export function DayView({
   events,
   onEventSelect,
   onEventCreate,
+  readOnlyCalendarIds = new Set(),
+  hoveredSlot,
+  onSlotHover,
 }: DayViewProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
   const hours = useMemo(() => {
     const dayStart = startOfDay(currentDate);
     return eachHourOfInterval({
       start: addHours(dayStart, StartHour),
       end: addHours(dayStart, EndHour - 1),
     });
+  }, [currentDate]);
+  
+  // Auto-scroll to 6am on mount or when currentDate changes
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      // Scroll to 6am (6 hours from midnight)
+      // Since StartHour is 0, we scroll to 6 * WeekCellsHeight
+      const scrollToHour = 6;
+      const scrollPosition = (scrollToHour - StartHour) * WeekCellsHeight;
+      
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        container.scrollTop = scrollPosition;
+      });
+    }
   }, [currentDate]);
 
   const dayEvents = useMemo(() => {
@@ -189,8 +213,23 @@ export function DayView({
     "day",
   );
 
+  // Calculate hover preview position
+  const hoverPreview = useMemo(() => {
+    if (!hoveredSlot || !isSameDay(hoveredSlot.date, currentDate) || hoveredSlot.time === undefined) {
+      return null;
+    }
+
+    const top = (hoveredSlot.time - StartHour) * WeekCellsHeight;
+    const height = WeekCellsHeight; // 1 hour default
+
+    return {
+      top,
+      height,
+    };
+  }, [hoveredSlot, currentDate]);
+
   return (
-    <div data-slot="day-view" className="contents">
+    <div data-slot="day-view" className="flex h-full flex-col overflow-hidden">
       {showAllDaySection && (
         <div className="border-border/70 bg-muted/50 border-t">
           <div className="grid grid-cols-[3rem_1fr] sm:grid-cols-[4rem_1fr]">
@@ -225,7 +264,7 @@ export function DayView({
         </div>
       )}
 
-      <div className="border-border/70 grid flex-1 grid-cols-[3rem_1fr] overflow-hidden border-t sm:grid-cols-[4rem_1fr]">
+      <div ref={scrollContainerRef} className="border-border/70 grid flex-1 grid-cols-[3rem_1fr] overflow-y-auto overflow-x-hidden border-t sm:grid-cols-[4rem_1fr]">
         <div>
           {hours.map((hour, index) => (
             <div
@@ -242,6 +281,21 @@ export function DayView({
         </div>
 
         <div className="relative">
+          {/* Hover preview skeleton */}
+          {hoverPreview && (
+            <div
+              className="pointer-events-none absolute z-[5] px-0.5"
+              style={{
+                top: `${hoverPreview.top}px`,
+                height: `${hoverPreview.height}px`,
+                left: "0%",
+                width: "100%",
+              }}
+            >
+              <div className="bg-primary/10 border-primary/30 size-full rounded border-2 border-dashed backdrop-blur-sm" />
+            </div>
+          )}
+
           {/* Positioned events */}
           {positionedEvents.map((positionedEvent) => (
             <div
@@ -262,6 +316,7 @@ export function DayView({
                   onClick={(e) => handleEventClick(positionedEvent.event, e)}
                   showTime
                   height={positionedEvent.height}
+                  isReadOnly={readOnlyCalendarIds.has(positionedEvent.event.calendarId)}
                 />
               </div>
             </div>
@@ -312,6 +367,12 @@ export function DayView({
                         startTime.setHours(hourValue);
                         startTime.setMinutes(quarter * 15);
                         onEventCreate(startTime);
+                      }}
+                      onHover={(date, time) => {
+                        onSlotHover?.({ date, time });
+                      }}
+                      onHoverEnd={() => {
+                        onSlotHover?.(null);
                       }}
                     />
                   );

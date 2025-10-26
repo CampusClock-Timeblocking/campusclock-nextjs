@@ -28,21 +28,30 @@ export const ReschedulingPolicySchema = z.enum([
 
 export const PeriodUnitSchema = z.enum(["DAY", "WEEK", "MONTH", "YEAR"]);
 
+export const weekdays = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
+
+export const energyProfiles = ["EARLY_BIRD", "BALANCED", "NIGHT_OWL"] as const;
+
 /* Common Schemas */
 
-const titleSchema = z.string().min(1, "Title is required").max(200);
-const descriptionSchema = z.string().max(2000);
-const prioritySchema = z.int().min(1).max(10);
-
-const weekDaySchema = z.int().min(0).max(6);
-const weekdaysSchema = weekDaySchema
+export const weekdaySchema = z.enum(weekdays);
+const weekdaysSchema = weekdaySchema
   .array()
-  .max(7)
-  .default([0, 1, 2, 3, 4, 5, 6])
-  .refine(
-    (weekdays) => new Set(weekdays).size === weekdays.length,
-    "Weekdays must be unique",
-  );
+  .min(1, { message: "Select at least one day" })
+  .max(7);
+export type Weekday = z.infer<typeof weekdaySchema>;
+
+const titleSchema = z.string().min(1, "Title is required").max(200);
+const descriptionSchema = z.string().max(2000).optional();
+const prioritySchema = z.int().min(1).max(10);
 
 /* User Schemas */
 
@@ -64,7 +73,7 @@ export const CreateProjectSchema = z
     startDate: z.date().optional(),
     deadline: z.date().optional(),
     status: ProjectStatusSchema.optional(),
-    parentId: z.uuid().optional().nullable(),
+    parentId: z.uuid().optional(),
   })
   .refine(
     (data) =>
@@ -79,23 +88,16 @@ export const UpdateProjectSchema = CreateProjectSchema.partial();
 
 /* Task Schemas */
 
-export const durationSchema = z
-  .string()
-  .regex(
-    /^(\d+m|\d+h|[0-9]+:[0-5][0-9]h)$/,
-    "Invalid duration format. Expected: 30m; 1:45h; 3h",
-  );
-
 export const CreateTaskSchema = z.object({
   title: titleSchema,
   description: descriptionSchema.optional(),
   status: TaskStatusSchema.optional(),
-  durationMinutes: durationSchema,
+  durationMinutes: z.int().min(1).optional(),
   priority: prioritySchema.optional(),
   complexity: z.int().min(1).max(10).optional(),
-  due: z.date().optional(),
+  due: z.coerce.date().optional(),
   scheduledTime: z.iso.time().optional(),
-  projectId: z.uuid().optional().nullable(),
+  projectId: z.uuid().optional(),
   habitId: z.uuid().optional(),
 });
 
@@ -164,24 +166,33 @@ export const UpdateSchedulingConfigSchema =
 
 /* Working Preferences Schemas */
 
-export const CreateWorkingPreferencesSchema = z
-  .object({
-    // Hours + availability
-    earliestTime: z.iso.time(),
-    latestTime: z.iso.time(),
-    dailyMaxMinutes: z.int().min(60).max(1440).default(600), // 1 hour to 24 hours
-    dailyOptimalMinutes: z.int().min(30).max(1440).default(480), // 30 min to 24 hours
-    workingDays: weekdaysSchema.default([0, 1, 2, 3, 4, 5, 6]),
+export const WorkingHoursSchema = z.object({
+  // Hours + availability
+  earliestTime: z.iso.time(),
+  latestTime: z.iso.time(),
+  workingDays: weekdaysSchema,
+});
+export type WorkingHours = z.infer<typeof WorkingHoursSchema>;
 
-    // Rhythm + breaks
-    focusPeriodMinutes: z.int().min(15).max(480).default(60), // 15 min to 8 hours
-    shortBreakMinutes: z.int().min(5).max(120).default(15), // 5 min to 2 hours
-    longBreakMinutes: z.int().min(15).max(480).default(60), // 15 min to 8 hours
-    longBreakFrequency: z.int().min(1).max(20).default(3), // 1 to 20 sessions
+export const PreferencesInput = z.object({
+  energyProfile: z.enum(energyProfiles),
+});
+export type Preferences = z.infer<typeof PreferencesInput>;
 
-    // Energy profile
-    alertnessByHour: z.array(z.number().min(0).max(1)).length(24),
-  })
+export const CreateWorkingPreferencesSchema = WorkingHoursSchema.extend({
+  // Hours + availability
+  dailyMaxMinutes: z.int().min(60).max(1440).default(600), // 1 hour to 24 hours
+  dailyOptimalMinutes: z.int().min(30).max(1440).default(480), // 30 min to 24 hours
+
+  // Rhythm + breaks
+  focusPeriodMinutes: z.int().min(15).max(480).default(60), // 15 min to 8 hours
+  shortBreakMinutes: z.int().min(5).max(120).default(15), // 5 min to 2 hours
+  longBreakMinutes: z.int().min(15).max(480).default(60), // 15 min to 8 hours
+  longBreakFrequency: z.int().min(1).max(20).default(3), // 1 to 20 sessions
+
+  // Energy profile
+  alertnessByHour: z.array(z.number().min(0).max(1)).length(24),
+})
   .refine(
     (data) => {
       const earliest = data.earliestTime;
@@ -190,8 +201,8 @@ export const CreateWorkingPreferencesSchema = z
 
       const [earliestHour, earliestMin] = earliest.split(":").map(Number);
       const [latestHour, latestMin] = latest.split(":").map(Number);
-      const earliestMinutes = (earliestHour || 0) * 60 + (earliestMin || 0);
-      const latestMinutes = (latestHour || 0) * 60 + (latestMin || 0);
+      const earliestMinutes = (earliestHour ?? 0) * 60 + (earliestMin ?? 0);
+      const latestMinutes = (latestHour ?? 0) * 60 + (latestMin ?? 0);
 
       return latestMinutes > earliestMinutes;
     },
@@ -230,8 +241,45 @@ export const CreateExcludedPeriodSchema = z
 
 export const UpdateExcludedPeriodSchema = CreateExcludedPeriodSchema.partial();
 
-/* Type Exports */
+export const CreateEventSchema = z
+  .object({
+    title: titleSchema,
+    description: descriptionSchema.optional(),
+    start: z.coerce.date(),
+    end: z.coerce.date(),
+    allDay: z.boolean().optional(),
+    color: z.string().optional(),
+    location: z.string().optional(),
+    calendarId: z.string().min(1, "Calendar is required"),
+    taskId: z.uuid().optional(),
+  })
+  .refine((data) => data.end >= data.start, {
+    message: "End date must be after start date",
+    path: ["end"],
+  });
 
+export const UpdateEventSchema = CreateEventSchema.partial().extend({
+  id: z.uuid(),
+});
+
+export const CreateEventFormSchema = CreateEventSchema.omit({
+  start: true,
+  end: true,
+  taskId: true,
+})
+  .extend({
+    start: z.date(),
+    end: z.date(),
+  })
+  .refine((data) => data.end >= data.start, {
+    message: "End date must be after start date",
+    path: ["end"],
+  });
+
+/* Type Exports */
+export type CreateEventInput = z.infer<typeof CreateEventSchema>;
+export type UpdateEventInput = z.infer<typeof UpdateEventSchema>;
+export type CreateEventFormInput = z.infer<typeof CreateEventFormSchema>;
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;

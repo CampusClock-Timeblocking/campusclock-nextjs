@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   addHours,
   areIntervalsOverlapping,
@@ -36,6 +36,9 @@ interface WeekViewProps {
   events: CalendarEvent[];
   onEventSelect: (event: CalendarEvent) => void;
   onEventCreate: (startTime: Date) => void;
+  readOnlyCalendarIds?: Set<string>;
+  hoveredSlot?: { date: Date; time?: number } | null;
+  onSlotHover?: (slot: { date: Date; time?: number } | null) => void;
 }
 
 interface PositionedEvent {
@@ -52,11 +55,32 @@ export function WeekView({
   events,
   onEventSelect,
   onEventCreate,
+  readOnlyCalendarIds = new Set(),
+  hoveredSlot,
+  onSlotHover,
 }: WeekViewProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const days = useMemo(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
+  }, [currentDate]);
+
+  // Auto-scroll to 6am on mount or when currentDate changes
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      // Scroll to 6am (6 hours from midnight)
+      // Since StartHour is 0, we scroll to 6 * WeekCellsHeight
+      const scrollToHour = 6;
+      const scrollPosition = (scrollToHour - StartHour) * WeekCellsHeight;
+
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        container.scrollTop = scrollPosition;
+      });
+    }
   }, [currentDate]);
 
   const weekStart = useMemo(
@@ -219,7 +243,7 @@ export function WeekView({
   );
 
   return (
-    <div data-slot="week-view" className="flex h-full flex-col">
+    <div data-slot="week-view" className="flex h-full flex-col overflow-hidden">
       <div className="bg-background/80 border-border/70 sticky top-0 z-30 grid grid-cols-8 border-b backdrop-blur-md">
         <div className="text-muted-foreground/70 py-2 text-center text-sm">
           <span className="max-[479px]:sr-only">{format(new Date(), "O")}</span>
@@ -303,7 +327,10 @@ export function WeekView({
         </div>
       )}
 
-      <div className="grid flex-1 grid-cols-8 overflow-hidden">
+      <div
+        ref={scrollContainerRef}
+        className="grid flex-1 grid-cols-8 overflow-x-hidden overflow-y-auto"
+      >
         <div className="border-border/70 grid auto-cols-fr border-r">
           {hours.map((hour, index) => (
             <div
@@ -346,6 +373,9 @@ export function WeekView({
                     onClick={(e) => handleEventClick(positionedEvent.event, e)}
                     showTime
                     height={positionedEvent.height}
+                    isReadOnly={readOnlyCalendarIds.has(
+                      positionedEvent.event.calendarId,
+                    )}
                   />
                 </div>
               </div>

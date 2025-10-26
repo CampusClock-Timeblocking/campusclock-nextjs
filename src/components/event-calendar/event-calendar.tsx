@@ -9,6 +9,7 @@ import {
   endOfWeek,
   format,
   isSameMonth,
+  startOfMonth,
   startOfWeek,
   subMonths,
   subWeeks,
@@ -44,6 +45,7 @@ import { WeekView } from "./week-view";
 import { MonthView } from "./month-view";
 import { EventDialog } from "./event-dialog";
 import { addHoursToDate } from "./utils";
+import { useCalendarContext } from "./calendar-context";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -51,7 +53,6 @@ export interface EventCalendarProps {
   onEventUpdate?: (event: CalendarEvent) => void;
   onEventDelete?: (eventId: string) => void;
   className?: string;
-  initialView?: CalendarView;
 }
 
 export function EventCalendar({
@@ -60,14 +61,24 @@ export function EventCalendar({
   onEventUpdate,
   onEventDelete,
   className,
-  initialView = "month",
 }: EventCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>(initialView);
+  const { currentDate, setCurrentDate, calendars, view, setView } =
+    useCalendarContext();
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
+  const [hoveredSlot, setHoveredSlot] = useState<{
+    date: Date;
+    time?: number;
+  } | null>(null);
+
+  // Create a set of read-only calendar IDs for quick lookup
+  const readOnlyCalendarIds = useMemo(() => {
+    return new Set(
+      calendars?.filter((cal) => cal.readOnly).map((cal) => cal.id) ?? [],
+    );
+  }, [calendars]);
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
@@ -108,9 +119,12 @@ export function EventCalendar({
 
   const handlePrevious = () => {
     if (view === "month") {
-      setCurrentDate(subMonths(currentDate, 1));
+      // Always, set to the first day of the month
+      setCurrentDate(subMonths(startOfMonth(currentDate), 1));
     } else if (view === "week") {
-      setCurrentDate(subWeeks(currentDate, 1));
+      setCurrentDate(
+        subWeeks(startOfWeek(currentDate, { weekStartsOn: 1 }), 1),
+      );
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, -1));
     } else if (view === "agenda") {
@@ -121,9 +135,11 @@ export function EventCalendar({
 
   const handleNext = () => {
     if (view === "month") {
-      setCurrentDate(addMonths(currentDate, 1));
+      setCurrentDate(addMonths(startOfMonth(currentDate), 1));
     } else if (view === "week") {
-      setCurrentDate(addWeeks(currentDate, 1));
+      setCurrentDate(
+        addWeeks(startOfWeek(currentDate, { weekStartsOn: 1 }), 1),
+      );
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, 1));
     } else if (view === "agenda") {
@@ -163,10 +179,14 @@ export function EventCalendar({
     const newEvent: CalendarEvent = {
       id: "",
       title: "",
+      description: null,
       start: startTime,
       end: addHoursToDate(startTime, 1),
       allDay: false,
-      
+      color: "blue",
+      location: null,
+      calendarId: "",
+      taskId: null,
     };
     setSelectedEvent(newEvent);
     setIsEventDialogOpen(true);
@@ -262,7 +282,7 @@ export function EventCalendar({
 
   return (
     <div
-      className="flex flex-col rounded-lg border has-data-[slot=month-view]:flex-1"
+      className="flex h-full flex-col has-data-[slot=month-view]:flex-1"
       style={
         {
           "--event-height": `${EventHeight}px`,
@@ -365,13 +385,16 @@ export function EventCalendar({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col overflow-hidden">
           {view === "month" && (
             <MonthView
               currentDate={currentDate}
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              readOnlyCalendarIds={readOnlyCalendarIds}
+              hoveredSlot={hoveredSlot}
+              onSlotHover={setHoveredSlot}
             />
           )}
           {view === "week" && (
@@ -380,6 +403,9 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              readOnlyCalendarIds={readOnlyCalendarIds}
+              hoveredSlot={hoveredSlot}
+              onSlotHover={setHoveredSlot}
             />
           )}
           {view === "day" && (
@@ -388,6 +414,9 @@ export function EventCalendar({
               events={events}
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
+              readOnlyCalendarIds={readOnlyCalendarIds}
+              hoveredSlot={hoveredSlot}
+              onSlotHover={setHoveredSlot}
             />
           )}
           {view === "agenda" && (

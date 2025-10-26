@@ -10,12 +10,25 @@ import React, {
 } from "react";
 import { api } from "@/trpc/react";
 import { type Calendar, type Event } from "@prisma/client";
-import { addDays } from "date-fns";
+import {
+  addWeeks,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addMonths,
+} from "date-fns";
+import type { CalendarView } from "@/components/event-calendar/types";
 
 interface CalendarContextType {
   // Date management
   currentDate: Date;
   setCurrentDate: (date: Date) => void;
+
+  // View management
+  view: CalendarView;
+  setView: (view: CalendarView) => void;
 
   // Calendar visibility management
   visibleCalendars: string[];
@@ -47,17 +60,90 @@ interface CalendarProviderProps {
 }
 
 export function CalendarProvider({ children }: CalendarProviderProps) {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const { data: calendars } = api.calendar.getAllWithEvents.useQuery({
-    start: currentDate,
-    end: addDays(currentDate, 30),
-  });
+  const [currentDate, setCurrentDate] = useState<Date>(
+    startOfWeek(startOfDay(new Date()), { weekStartsOn: 1 }),
+  );
+  const [view, setView] = useState<CalendarView>("week");
+
+  // Calculate date range based on view for efficient caching
+  // With weekly chunk caching, we can be more precise and let cache handle the rest
+  const dateRange = React.useMemo(() => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+
+    switch (view) {
+      case "day":
+        // Current week + 1 week buffer on each side for smooth navigation
+        return {
+          startDate: addWeeks(weekStart, -1),
+          endDate: addWeeks(weekEnd, 1),
+        };
+
+      case "week":
+        // Current week + 1 week buffer on each side
+        return {
+          startDate: addWeeks(weekStart, -1),
+          endDate: addWeeks(weekEnd, 1),
+        };
+
+      case "month":
+        // Current month + 1 month buffer on each side
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        return {
+          startDate: addMonths(monthStart, -1),
+          endDate: addMonths(monthEnd, 1),
+        };
+
+      case "agenda":
+        // Next 4 weeks from current date
+        return {
+          startDate: weekStart,
+          endDate: addWeeks(weekStart, 4),
+        };
+
+      default:
+        // Fallback to week view range
+        return {
+          startDate: addWeeks(weekStart, -1),
+          endDate: addWeeks(weekEnd, 1),
+        };
+    }
+  }, [currentDate, view]);
+
+  const startDate = dateRange.startDate;
+  const endDate = dateRange.endDate;
+
+  const { data: calendars } = api.calendar.getAllWithEvents.useQuery(
+    {
+      start: startDate,
+      end: endDate,
+    },
+    {
+      // Keep showing previous data while fetching new data
+      placeholderData: (previousData) => previousData,
+      // Consider data fresh for 2 minutes (matches Redis cache TTL)
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      // Keep inactive data in cache for 5 minutes
+      gcTime: 5 * 60 * 1000, // 5 minutes
+    },
+  );
 
   const getAllCalendarsWithEvents =
-    api.calendar.getAllCalendarsWithUnifiedEvents.useQuery({
-      start: currentDate,
-      end: addDays(currentDate, 30),
-    });
+    api.calendar.getAllCalendarsWithUnifiedEvents.useQuery(
+      {
+        start: startDate,
+        end: endDate,
+      },
+      {
+        // Keep showing previous data while fetching new data
+        placeholderData: (previousData) => previousData,
+        // Consider data fresh for 2 minutes (matches Redis cache TTL)
+        staleTime: 2 * 60 * 1000, // 2 minutes
+        // Keep inactive data in cache for 5 minutes
+        gcTime: 5 * 60 * 1000, // 5 minutes
+      },
+    );
 
   const events = React.useMemo(
     () => getAllCalendarsWithEvents.data?.flatMap((cal) => cal.events) ?? [],
@@ -69,7 +155,11 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
 
   // Initialize visible calendars when calendars data first loads
   useEffect(() => {
-    if (calendars && calendars.length > 0 && !hasInitializedVisibleCalendars.current) {
+    if (
+      calendars &&
+      calendars.length > 0 &&
+      !hasInitializedVisibleCalendars.current
+    ) {
       setVisibleCalendars(calendars.map((calendar) => calendar.id));
       hasInitializedVisibleCalendars.current = true;
     }
@@ -97,6 +187,8 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     isCalendarVisible,
     visibleCalendars,
     toggleCalendarVisibility,
+    view,
+    setView,
   };
 
   return (

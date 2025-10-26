@@ -90,7 +90,8 @@ export class GCalService {
   }
 
   /**
-   * Get events from a Google Calendar and transform them to match Prisma Event structure
+   * Get events from a single Google Calendar
+   * @deprecated Use getEventsFromCalendars for better performance with multiple calendars
    */
   async getEventsFromCalendar(
     userId: string,
@@ -99,6 +100,25 @@ export class GCalService {
     start: Date,
     end: Date,
   ): Promise<Omit<Event, "calendar" | "task">[]> {
+    const result = await this.getEventsFromCalendars(userId, [calendar], start, end);
+    return result.get(calendar.id) ?? [];
+  }
+
+  /**
+   * Get events from multiple Google Calendars in parallel (optimized)
+   * Returns a map of calendarId -> events
+   */
+  async getEventsFromCalendars(
+    userId: string,
+    calendars: Calendar[],
+    start: Date,
+    end: Date,
+  ): Promise<Map<string, Omit<Event, "calendar" | "task">[]>> {
+    if (calendars.length === 0) {
+      return new Map();
+    }
+
+    // Get Google account credentials once
     const googleAccount = await this.db.account.findFirst({
       where: { userId, providerId: "google" },
     });
@@ -116,35 +136,73 @@ export class GCalService {
       refresh_token: googleAccount.refreshToken,
     });
 
-    const events = await google.calendar("v3").events.list({
-      calendarId: externalCalendarId,
-      singleEvents: true,
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-      maxResults: 2500,
-      auth: oAuthClient,
-    });
+    // Fetch all calendars in parallel
+    const results = await Promise.allSettled(
+      calendars.map(async (calendar) => {
+        if (!calendar.externalId) {
+          return { calendarId: calendar.id, events: [] };
+        }
 
-    // Transform Google Calendar events to Prisma Event format
-    return (
-      events.data.items
-        ?.filter(
-          (event) => event.id && event.summary && event.start && event.end,
-        )
-        .map((event) => ({
-          id: `gcal-${event.id}`, // Prefix to avoid conflicts with local events
-          title: event.summary!,
-          description: event.description ?? null,
-          start: new Date(event.start!.dateTime ?? event.start!.date!),
-          end: new Date(event.end!.dateTime ?? event.end!.date!),
-          allDay:
-            event.start!.dateTime === undefined &&
-            event.end!.dateTime === undefined,
-          color: calendar.backgroundColor,
-          location: event.location ?? null,
-          calendarId: calendar.id,
-          taskId: null,
-        })) ?? []
+        try {
+          const events = await google.calendar("v3").events.list({
+            calendarId: calendar.externalId,
+            singleEvents: true,
+            timeMin: start.toISOString(),
+            timeMax: end.toISOString(),
+            maxResults: 2500,
+            auth: oAuthClient,
+          });
+
+          // Transform Google Calendar events to Prisma Event format
+          const transformedEvents =
+            events.data.items
+              ?.filter((event) => event.id && event.summary && event.start && event.end)
+              .map((event) => ({
+                id: `gcal-${calendar.externalId}-${event.id}`, // Include calendar ID to avoid conflicts
+                title: event.summary!,
+                description: event.description ?? null,
+                start: new Date(event.start!.dateTime ?? event.start!.date!),
+                end: new Date(event.end!.dateTime ?? event.end!.date!),
+                allDay: event.start!.dateTime === undefined && event.end!.dateTime === undefined,
+                color: calendar.backgroundColor,
+                location: event.location ?? null,
+                calendarId: calendar.id,
+                taskId: null,
+              })) ?? [];
+
+          return { calendarId: calendar.id, events: transformedEvents };
+        } catch (error) {
+          // If calendar is not found (deleted/unshared), remove it from database
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            ("code" in error || "status" in error) &&
+            ((error as { code?: number }).code === 404 ||
+              (error as { status?: number }).status === 404)
+          ) {
+            await this.db.calendar.delete({
+              where: { id: calendar.id },
+            });
+          } else {
+            console.warn(
+              `Failed to fetch events from calendar ${calendar.id}:`,
+              error,
+            );
+          }
+          return { calendarId: calendar.id, events: [] };
+        }
+      }),
     );
+
+    // Build result map
+    const resultMap = new Map<string, Omit<Event, "calendar" | "task">[]>();
+    
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        resultMap.set(result.value.calendarId, result.value.events);
+      }
+    }
+
+    return resultMap;
   }
 }
