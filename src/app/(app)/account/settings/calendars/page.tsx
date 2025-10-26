@@ -39,6 +39,9 @@ import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { CalendarFormDialog } from "@/components/calendar-form-dialog";
+import { PageWrapper } from "@/components/basic-components/page-wrapper";
+import { PageHeader } from "@/components/basic-components/page-header";
+import { SectionHeader } from "@/components/basic-components/section-header";
 
 export default function CalendarsPage() {
   const utils = api.useUtils();
@@ -160,29 +163,22 @@ export default function CalendarsPage() {
   }
 
   return (
-    <div className="container max-w-4xl px-6 py-8">
-      {/* Header Section */}
-      <div className="mb-12 flex items-center gap-6">
-        <div className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-2xl">
-          <RiCalendar2Line className="text-primary h-8 w-8" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">Calendars</h1>
-          <p className="text-muted-foreground text-lg">
-            Manage and organize your calendars and events.
-          </p>
-        </div>
-      </div>
+    <PageWrapper>
+      <PageHeader
+        icon={<RiCalendar2Line className="text-primary h-8 w-8" />}
+        title="Calendars"
+        description="Manage and organize your calendars and events."
+      />
 
       <div className="space-y-12">
         {/* Local Calendars Section */}
         {localCalendars && localCalendars.length > 0 && (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  CampusClock Calendars
-                </h2>
+            <SectionHeader
+              variant="subsection"
+              title="CampusClock Calendars"
+              description="Personal calendars stored locally in CampusClock."
+              action={
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -192,11 +188,8 @@ export default function CalendarsPage() {
                   <RiAddLine className="h-4 w-4" />
                   New Calendar
                 </Button>
-              </div>
-              <p className="text-muted-foreground">
-                Personal calendars stored locally in CampusClock.
-              </p>
-            </div>
+              }
+            />
 
             <ItemGroup className="gap-3">
               {localCalendars.map((calendar) => (
@@ -256,11 +249,11 @@ export default function CalendarsPage() {
 
         {/* Google Calendars Section */}
         <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold tracking-tight">
-                Google Calendars
-              </h2>
+          <SectionHeader
+            variant="subsection"
+            title="Google Calendars"
+            description="Calendars synced from your Google account."
+            action={
               <Button
                 onClick={handleSyncGoogleCalendars}
                 variant="outline"
@@ -270,11 +263,8 @@ export default function CalendarsPage() {
                 <RiGoogleLine className="h-4 w-4" />
                 Sync Calendars
               </Button>
-            </div>
-            <p className="text-muted-foreground">
-              Calendars synced from your Google account.
-            </p>
-          </div>
+            }
+          />
           {googleCalendars && googleCalendars.length > 0 ? (
             <ItemGroup className="gap-3">
               {googleCalendars.map((calendar) => (
@@ -380,6 +370,6 @@ export default function CalendarsPage() {
           setEditingCalendar(null);
         }}
       />
-    </div>
+    </PageWrapper>
   );
 }

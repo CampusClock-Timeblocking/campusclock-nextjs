@@ -22,6 +22,8 @@ import { ProjectView } from "@/components/datatable/views/project-view";
 import { CreateHabitDialog } from "@/components/item-dialogs/dialogs/habit";
 import { HabitView } from "@/components/datatable/views/habit-view";
 import { habitColumns } from "@/components/datatable/columns/habit-columns";
+import { PageWrapper } from "@/components/basic-components/page-wrapper";
+import { SectionHeader } from "@/components/basic-components/section-header";
 
 export default function TasksPage() {
   const { data: tasks = [], refetch: refetchTasks } =
@@ -37,59 +39,58 @@ export default function TasksPage() {
   const { showDialog } = useDialog();
 
   return (
-    <div className="container mx-auto space-y-12 px-14 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground">
-            Manage your tasks and track your progress
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => showDialog(<CreateTaskDialog />)}
-        >
-          <Plus />
-          Add Task
-        </Button>
-      </div>
+    <PageWrapper className="space-y-12">
+      <SectionHeader
+        variant="section"
+        title="Tasks"
+        description="Manage your tasks and track your progress"
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => showDialog(<CreateTaskDialog />)}
+          >
+            <Plus />
+            Add Task
+          </Button>
+        }
+      />
 
       <TaskView columns={taskColumns} data={tasks} />
 
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Habits</h1>
-          <p className="text-muted-foreground">Manage your Habits</p>
-        </div>
-
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => showDialog(<CreateHabitDialog />)}
-        >
-          <Plus />
-          Add Habit
-        </Button>
-      </div>
+      <SectionHeader
+        variant="section"
+        title="Habits"
+        description="Manage your Habits"
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => showDialog(<CreateHabitDialog />)}
+          >
+            <Plus />
+            Add Habit
+          </Button>
+        }
+      />
       <HabitView columns={habitColumns} data={habits} />
 
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">Manage your Projects </p>
-        </div>
-
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => showDialog(<CreateProjectDialog />)}
-        >
-          <Plus />
-          Add Project
-        </Button>
-      </div>
+      <SectionHeader
+        variant="section"
+        title="Projects"
+        description="Manage your Projects"
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => showDialog(<CreateProjectDialog />)}
+          >
+            <Plus />
+            Add Project
+          </Button>
+        }
+      />
       <ProjectView columns={projectColumns} data={projects} />
-    </div>
+    </PageWrapper>
   );
 }
