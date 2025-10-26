@@ -159,7 +159,7 @@ export function ProjectView({ columns, data }: Props) {
 
         <div className="ml-auto flex items-center gap-2">
           <Input
-            placeholder="Filter tasks..."
+            placeholder="Filter projects..."
             value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
               table.getColumn("title")?.setFilterValue(event.target.value)
