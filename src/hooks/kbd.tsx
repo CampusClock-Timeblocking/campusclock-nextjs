@@ -1,5 +1,18 @@
 import { useEffect, useCallback } from "react";
 
+export function useEventListener<K extends keyof DocumentEventMap>(
+  type: K,
+  callback: (event: DocumentEventMap[K]) => void,
+) {
+  useEffect(() => {
+    document.addEventListener(type, callback);
+
+    return () => {
+      document.removeEventListener(type, callback);
+    };
+  }, [type, callback]);
+}
+
 export function useShiftEnter(action: () => void) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -11,13 +24,7 @@ export function useShiftEnter(action: () => void) {
     [action],
   );
 
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
+  useEventListener("keydown", handleKeyDown);
 }
 
 export function useCommandN(action: () => void) {
@@ -32,11 +39,5 @@ export function useCommandN(action: () => void) {
     [action],
   );
 
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
+  useEventListener("keydown", handleKeyDown);
 }
