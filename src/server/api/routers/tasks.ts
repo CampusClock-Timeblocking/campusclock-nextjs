@@ -2,26 +2,15 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { parseDuration } from "@/lib/utils";
-import { CreateTaskSchema, UpdateTaskSchema } from "@/lib/zod";
+import { createTaskInputSchema, UpdateTaskInputSchema } from "@/lib/zod";
 
 export const taskRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(CreateTaskSchema)
+    .input(createTaskInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const { durationMinutes, ...rest } = input;
-
-      const parsedDuration = parseDuration(durationMinutes);
-      if (parsedDuration === null) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid duration format",
-        });
-      }
-
       const task = await ctx.db.task.create({
         data: {
-          ...rest,
-          durationMinutes: parsedDuration,
+          ...input,
           userId: ctx.session.user.id,
         },
       });
@@ -53,48 +42,16 @@ export const taskRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string().uuid(),
-        data: UpdateTaskSchema,
+        data: UpdateTaskInputSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const existingTask = await ctx.db.task.findUnique({
+      const task = await ctx.db.task.update({
         where: {
           id: input.id,
           userId: ctx.session.user.id,
         },
-      });
-
-      if (!existingTask) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Task not found",
-        });
-      }
-
-      const { durationMinutes, ...rest } = input.data;
-
-      let parsedDuration: number | undefined;
-      if (durationMinutes !== undefined) {
-        const result = parseDuration(durationMinutes);
-        if (result === null) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invalid duration format",
-          });
-        }
-        parsedDuration = result;
-      }
-
-      const task = await ctx.db.task.update({
-        where: {
-          id: input.id,
-        },
-        data: {
-          ...rest,
-          ...(parsedDuration !== undefined && {
-            durationMinutes: parsedDuration,
-          }),
-        },
+        data: input.data,
       });
 
       return task;
@@ -104,35 +61,16 @@ export const taskRouter = createTRPCRouter({
     .input(
       z.object({
         ids: z.array(z.string().uuid()),
-        data: UpdateTaskSchema,
+        data: UpdateTaskInputSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { durationMinutes, ...rest } = input.data;
-      let parsedDuration: number | undefined;
-
-      if (durationMinutes !== undefined) {
-        const result = parseDuration(durationMinutes);
-        if (result === null) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invalid duration format",
-          });
-        }
-        parsedDuration = result;
-      }
-
       const result = await ctx.db.task.updateMany({
         where: {
           id: { in: input.ids },
           userId: ctx.session.user.id,
         },
-        data: {
-          ...rest,
-          ...(parsedDuration !== undefined && {
-            durationMinutes: parsedDuration,
-          }),
-        },
+        data: input.data,
       });
 
       return { count: result.count };

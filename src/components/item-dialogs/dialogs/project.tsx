@@ -26,7 +26,7 @@ export function CreateProjectDialog({
   return (
     <ProjectDialogContent
       hideDialog={hideDialog}
-      submitButtonText="Create project"
+      submitButtonText="Create"
       mutation={createProjectMutation}
       initialValues={initialValues}
       autoFocusTitle={autoFocusTitle}
@@ -51,7 +51,7 @@ export function UpdateProjectDialog({ project }: EditProps) {
     <ProjectDialogContent
       hideDialog={hideDialog}
       mutation={updateProjectMutation}
-      submitButtonText="Update project"
+      submitButtonText="Update"
       initialValues={initialValues}
     />
   );

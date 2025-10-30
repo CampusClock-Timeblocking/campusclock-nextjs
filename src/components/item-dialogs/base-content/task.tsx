@@ -14,7 +14,13 @@ import { Slider } from "../../ui/slider";
 import { DialogContentLayout } from "./layout";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CreateTaskSchema, type CreateTaskInput } from "@/lib/zod";
+import {
+  createTaskInputSchema,
+  rawCreateTaskSchema,
+  type CreateTaskInput,
+  type FrontendCreateTaskInput,
+  type FrontendUpdateTaskInput,
+} from "@/lib/zod";
 import { DateTimePicker } from "../../date-time-picker";
 import type {
   useCreateTaskMutation,
@@ -22,11 +28,13 @@ import type {
 } from "@/hooks/mutations/task";
 import { AsyncButton } from "@/components/basic-components/async-action-button";
 import { api } from "@/trpc/react";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useShiftEnter } from "@/hooks/kbd";
 
 interface Props {
   hideDialog: () => void;
   autoFocusTitle?: boolean;
-  initialValues?: CreateTaskInput;
+  initialValues?: FrontendCreateTaskInput;
   mutation:
     | ReturnType<typeof useCreateTaskMutation>
     | ReturnType<typeof useUpdateTaskMutation>;
@@ -50,8 +58,8 @@ export const TaskDialogContent: React.FC<Props> = ({
   mutation,
   submitButtonText,
 }) => {
-  const form = useForm<CreateTaskInput>({
-    resolver: zodResolver(CreateTaskSchema),
+  const form = useForm<FrontendCreateTaskInput>({
+    resolver: zodResolver(rawCreateTaskSchema),
     defaultValues: initialValues ?? DEFAULT_VALUES,
   });
 
@@ -61,6 +69,7 @@ export const TaskDialogContent: React.FC<Props> = ({
     formState: { errors },
     watch,
     setValue,
+    clearErrors,
   } = form;
 
   const title = watch("title");
@@ -76,12 +85,20 @@ export const TaskDialogContent: React.FC<Props> = ({
 
   const { data: projects, isLoading } = api.project.getAll.useQuery();
 
+  useShiftEnter(handleFormSubmit);
+
   return (
     <DialogContentLayout
-      title={title}
+      title={title ?? ""}
       titlePlaceholderText="New task..."
-      setTitle={(newTitle) => setValue("title", newTitle)}
+      setTitle={(newTitle) => {
+        setValue("title", newTitle);
+        if (newTitle.trim() && errors.title) {
+          clearErrors("title");
+        }
+      }}
       initFocusTitle={autoFocusTitle}
+      titleError={errors.title?.message}
       mainContent={
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -270,13 +287,21 @@ export const TaskDialogContent: React.FC<Props> = ({
               disabled={mutation.isPending}
             >
               Cancel
+              <Kbd>Esc</Kbd>
             </Button>
             <AsyncButton
               onClick={handleFormSubmit}
-              disabled={!title?.trim()}
               isLoading={mutation.isPending}
             >
-              {submitButtonText}
+              {submitButtonText}{" "}
+              <KbdGroup>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                  ⇧
+                </Kbd>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                  ⏎
+                </Kbd>
+              </KbdGroup>
             </AsyncButton>
           </div>
         </>

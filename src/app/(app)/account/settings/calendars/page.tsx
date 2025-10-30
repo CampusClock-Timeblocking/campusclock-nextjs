@@ -42,11 +42,12 @@ import { CalendarFormDialog } from "@/components/calendar-form-dialog";
 import { PageWrapper } from "@/components/basic-components/page-wrapper";
 import { PageHeader } from "@/components/basic-components/page-header";
 import { SectionHeader } from "@/components/basic-components/section-header";
+import { TitlePage } from "@/components/basic-components/page-layout";
 
 export default function CalendarsPage() {
   const utils = api.useUtils();
   const { confirm } = useConfirmationDialog();
-  
+
   // Dialog state
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false);
   const [editingCalendar, setEditingCalendar] = useState<{
@@ -157,19 +158,15 @@ export default function CalendarsPage() {
   );
 
   if (calendarQuery.isLoading) {
-    return (
-      <div>need to add skeleton</div>
-    );
+    return <div>need to add skeleton</div>;
   }
 
   return (
-    <PageWrapper>
-      <PageHeader
-        icon={<RiCalendar2Line className="text-primary h-8 w-8" />}
-        title="Calendars"
-        description="Manage and organize your calendars and events."
-      />
-
+    <TitlePage
+      title="Calendars"
+      description="Manage your calendars"
+      className="max-w-6xl"
+    >
       <div className="space-y-12">
         {/* Local Calendars Section */}
         {localCalendars && localCalendars.length > 0 && (
@@ -179,9 +176,9 @@ export default function CalendarsPage() {
               title="CampusClock Calendars"
               description="Personal calendars stored locally in CampusClock."
               action={
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="gap-2"
                   onClick={handleCreateCalendar}
                 >
@@ -209,7 +206,11 @@ export default function CalendarsPage() {
                   <ItemActions>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
                           <RiMore2Line className="h-4 w-4" />
                           <span className="sr-only">Open menu</span>
                         </Button>
@@ -231,7 +232,9 @@ export default function CalendarsPage() {
                           Delete All Events
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleDeleteCalendar(calendar.id, false)}
+                          onClick={() =>
+                            handleDeleteCalendar(calendar.id, false)
+                          }
                           className="text-destructive gap-2"
                           disabled={countOfLocalCalendars === 1}
                         >
@@ -287,14 +290,20 @@ export default function CalendarsPage() {
                   <ItemActions>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
                           <RiMore2Line className="h-4 w-4" />
                           <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-[180px]">
                         <DropdownMenuItem
-                          onClick={() => handleDeleteCalendar(calendar.id, true)}
+                          onClick={() =>
+                            handleDeleteCalendar(calendar.id, true)
+                          }
                           className="text-destructive gap-2"
                         >
                           <RiDeleteBinLine className="h-4 w-4" />
@@ -314,11 +323,16 @@ export default function CalendarsPage() {
                 </EmptyMedia>
                 <EmptyTitle>No Google Calendars Found</EmptyTitle>
                 <EmptyDescription>
-                  Connect your Google account to sync your calendars with CampusClock.
+                  Connect your Google account to sync your calendars with
+                  CampusClock.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
-                <Button variant="outline" className="gap-2" onClick={handleSyncGoogleCalendars}>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={handleSyncGoogleCalendars}
+                >
                   <RiGoogleLine className="h-4 w-4" />
                   Sync from Google Calendar
                 </Button>
@@ -337,13 +351,14 @@ export default function CalendarsPage() {
                 </EmptyMedia>
                 <EmptyTitle>No Calendars Found</EmptyTitle>
                 <EmptyDescription>
-                  Get started by creating a local calendar or syncing your Google calendars.
+                  Get started by creating a local calendar or syncing your
+                  Google calendars.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="gap-2"
                     onClick={handleCreateCalendar}
                   >
@@ -370,6 +385,6 @@ export default function CalendarsPage() {
           setEditingCalendar(null);
         }}
       />
-    </PageWrapper>
+    </TitlePage>
   );
 }

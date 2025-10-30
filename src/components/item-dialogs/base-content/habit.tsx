@@ -14,15 +14,21 @@ import { Switch } from "../../ui/switch";
 import { DialogContentLayout } from "./layout";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CreateHabitSchema, type CreateHabitInput } from "@/lib/zod";
+import {
+  createHabitInputSchema,
+  rawCreateHabitSchema,
+  type CreateHabitInput,
+  type FrontendCreateHabitInput,
+} from "@/lib/zod";
 import type {
   useCreateHabitMutation,
   useUpdateHabitMutation,
 } from "@/hooks/mutations/habit";
 import { AsyncButton } from "@/components/basic-components/async-action-button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useShiftEnter } from "@/hooks/kbd";
 
 interface Props {
   hideDialog: () => void;
@@ -34,16 +40,16 @@ interface Props {
   submitButtonText: string;
 }
 
-const DEFAULT_VALUES: CreateHabitInput = {
+const DEFAULT_VALUES: FrontendCreateHabitInput = {
   title: "",
   description: "",
-  durationMinutes: undefined,
+  durationMinutes: "",
   priority: 3,
   active: true,
   recurrenceType: "DAY",
   interval: 1,
   timesPerPeriod: 1,
-  byWeekdays: [],
+  byWeekdays: undefined,
   preferredTime: undefined,
 };
 
@@ -64,8 +70,8 @@ export const HabitDialogContent: React.FC<Props> = ({
   mutation,
   submitButtonText,
 }) => {
-  const form = useForm<CreateHabitInput>({
-    resolver: zodResolver(CreateHabitSchema),
+  const form = useForm<FrontendCreateHabitInput>({
+    resolver: zodResolver(rawCreateHabitSchema),
     defaultValues: initialValues ?? DEFAULT_VALUES,
   });
 
@@ -75,6 +81,7 @@ export const HabitDialogContent: React.FC<Props> = ({
     formState: { errors },
     watch,
     setValue,
+    clearErrors,
   } = form;
 
   const title = watch("title");
@@ -89,12 +96,20 @@ export const HabitDialogContent: React.FC<Props> = ({
     });
   });
 
+  useShiftEnter(handleFormSubmit);
+
   return (
     <DialogContentLayout
-      title={title}
+      title={title ?? ""}
       titlePlaceholderText="New habit..."
-      setTitle={(newTitle) => setValue("title", newTitle)}
+      setTitle={(newTitle) => {
+        setValue("title", newTitle);
+        if (newTitle.trim() && errors.title) {
+          clearErrors("title");
+        }
+      }}
       initFocusTitle={autoFocusTitle}
+      titleError={errors.title?.message}
       mainContent={
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -124,22 +139,17 @@ export const HabitDialogContent: React.FC<Props> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="duration">Duration</Label>
+              <Label htmlFor="duration">Estimated Duration</Label>
               <Controller
                 control={control}
                 name="durationMinutes"
                 render={({ field }) => (
                   <Input
                     id="duration"
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      field.onChange(value ? parseInt(value) : undefined);
-                    }}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
                     onBlur={field.onBlur}
-                    type="number"
-                    min="1"
-                    placeholder="Minutes"
+                    placeholder="e.g., 30m, 2h, 2:30h"
                   />
                 )}
               />
@@ -161,7 +171,7 @@ export const HabitDialogContent: React.FC<Props> = ({
                   <Select
                     value={field.value}
                     onValueChange={(value) => {
-                      if (value !== "WEEK") form.resetField("byWeekdays");
+                      if (value !== "WEEK") setValue("byWeekdays", undefined);
                       field.onChange(value);
                     }}
                   >
@@ -236,8 +246,8 @@ export const HabitDialogContent: React.FC<Props> = ({
               <div className="flex gap-2">
                 {WEEKDAY_LABELS.map((day) => {
                   const dayNumber = Number(day.value);
-                  const checked =
-                    watch("byWeekdays")?.includes(dayNumber) ?? false;
+                  const byWeekdays = watch("byWeekdays");
+                  const checked = byWeekdays?.includes(dayNumber) ?? false;
                   return (
                     <div key={day.value} className="w-10">
                       <label
@@ -345,13 +355,21 @@ export const HabitDialogContent: React.FC<Props> = ({
               disabled={mutation.isPending}
             >
               Cancel
+              <Kbd>Esc</Kbd>
             </Button>
             <AsyncButton
               onClick={handleFormSubmit}
-              disabled={!title?.trim()}
               isLoading={mutation.isPending}
             >
-              {submitButtonText}
+              {submitButtonText}{" "}
+              <KbdGroup>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                  ⇧
+                </Kbd>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                  ⏎
+                </Kbd>
+              </KbdGroup>
             </AsyncButton>
           </div>
         </>

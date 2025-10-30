@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { type Task, TaskStatus } from "@prisma/client";
 import { format } from "date-fns";
+import { formatDuration } from "@/lib/utils";
 
 export type TaskWithProject = Task & {
   project?: {
@@ -144,25 +145,13 @@ export const columns: ColumnDef<TaskWithProject>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => {
-      const duration = row.getValue("durationMinutes") as number | null;
-      if (!duration) return <div className="text-sm">-</div>;
-
-      const hours = Math.floor(duration / 60);
-      const minutes = duration % 60;
-
-      if (hours > 0 && minutes > 0) {
-        return (
-          <div className="text-sm">
-            {hours}h {minutes}m
-          </div>
-        );
-      } else if (hours > 0) {
-        return <div className="text-sm">{hours}h</div>;
-      } else {
-        return <div className="text-sm">{minutes}m</div>;
-      }
-    },
+    cell: ({ row }) => (
+      <div className="text-sm">
+        {row.original.durationMinutes
+          ? formatDuration(row.original.durationMinutes)
+          : "-"}
+      </div>
+    ),
   },
   {
     accessorKey: "status",

@@ -21,6 +21,8 @@ import type {
 import { AsyncButton } from "@/components/basic-components/async-action-button";
 import type { Project } from "@prisma/client";
 import { api } from "@/trpc/react";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useShiftEnter } from "@/hooks/kbd";
 
 interface Props {
   hideDialog: () => void;
@@ -44,8 +46,8 @@ export const ProjectDialogContent: React.FC<Props> = ({
   const form = useForm<CreateProjectInput>({
     resolver: zodResolver(CreateProjectSchema),
     defaultValues: {
-      title: initialValues?.title,
-      description: initialValues?.description,
+      title: initialValues?.title ?? "",
+      description: initialValues?.description ?? "",
       priority: initialValues?.priority ?? 3,
       startDate: initialValues?.startDate,
       deadline: initialValues?.deadline,
@@ -60,6 +62,7 @@ export const ProjectDialogContent: React.FC<Props> = ({
     formState: { errors },
     watch,
     setValue,
+    clearErrors,
   } = form;
 
   const title = watch("title");
@@ -76,12 +79,20 @@ export const ProjectDialogContent: React.FC<Props> = ({
     });
   });
 
+  useShiftEnter(handleFormSubmit);
+
   return (
     <DialogContentLayout
-      title={title}
+      title={title ?? ""}
       titlePlaceholderText="New project..."
-      setTitle={(newTitle) => setValue("title", newTitle)}
+      setTitle={(newTitle) => {
+        setValue("title", newTitle);
+        if (newTitle.trim() && errors.title) {
+          clearErrors("title");
+        }
+      }}
       initFocusTitle={autoFocusTitle}
+      titleError={errors.title?.message}
       mainContent={
         <div className="space-y-4">
           <div className="space-y-2">
@@ -232,13 +243,21 @@ export const ProjectDialogContent: React.FC<Props> = ({
               disabled={mutation.isPending}
             >
               Cancel
+              <Kbd>Esc</Kbd>
             </Button>
             <AsyncButton
               onClick={handleFormSubmit}
-              disabled={!title?.trim()}
               isLoading={mutation.isPending}
             >
-              {submitButtonText}
+              {submitButtonText}{" "}
+              <KbdGroup>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                  ⇧
+                </Kbd>
+                <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                  ⏎
+                </Kbd>
+              </KbdGroup>
             </AsyncButton>
           </div>
         </>

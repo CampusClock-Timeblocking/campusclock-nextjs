@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseDuration } from "./utils";
 
 /* Enums */
 
@@ -42,6 +43,11 @@ export const energyProfiles = ["EARLY_BIRD", "BALANCED", "NIGHT_OWL"] as const;
 
 /* Common Schemas */
 
+const titleSchema = z
+  .string()
+  .min(1, "Title is required")
+  .max(80, "Title must be at most 80 characters");
+
 export const weekdaySchema = z.enum(weekdays);
 const weekdaysSchema = weekdaySchema
   .array()
@@ -49,7 +55,8 @@ const weekdaysSchema = weekdaySchema
   .max(7);
 export type Weekday = z.infer<typeof weekdaySchema>;
 
-const titleSchema = z.string().min(1, "Title is required").max(200);
+// Weekdays for habits (0-6, where 0 is Sunday)
+const habitWeekdaysSchema = z.array(z.number().int().min(0).max(6)).optional();
 const descriptionSchema = z.string().max(2000).optional();
 const prioritySchema = z.int().min(1).max(10);
 
@@ -73,7 +80,7 @@ export const CreateProjectSchema = z
     startDate: z.date().optional(),
     deadline: z.date().optional(),
     status: ProjectStatusSchema.optional(),
-    parentId: z.uuid().optional(),
+    parentId: z.uuid().optional().nullable(),
   })
   .refine(
     (data) =>
@@ -88,38 +95,82 @@ export const UpdateProjectSchema = CreateProjectSchema.partial();
 
 /* Task Schemas */
 
-export const CreateTaskSchema = z.object({
+export const durationSchema = z
+  .string()
+  .min(1, "Duration is required")
+  .regex(
+    /^(\d+m|\d+h|\d+h\s*\d+m|\d+:([0-9]|[1-5][0-9])h)$/,
+    "Invalid duration format. Expected: 30m; 1h35m; 1h 35m; 1:45h; 3h",
+  )
+  .refine(
+    (value) => {
+      const parsed = parseDuration(value);
+      return parsed !== null && parsed <= 1440;
+    },
+    {
+      message: "Duration cannot exceed 24 hours",
+    },
+  );
+
+export const parseDurationSchema = durationSchema.transform((input, ctx) => {
+  const parsed = parseDuration(input);
+  if (parsed === null) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Failed to parse duration",
+      path: ["durationMinutes"],
+    });
+    return z.NEVER;
+  }
+  return parsed;
+});
+
+export const rawCreateTaskSchema = z.object({
   title: titleSchema,
   description: descriptionSchema.optional(),
   status: TaskStatusSchema.optional(),
-  durationMinutes: z.int().min(1).optional(),
+  durationMinutes: durationSchema,
   priority: prioritySchema.optional(),
   complexity: z.int().min(1).max(10).optional(),
-  due: z.coerce.date().optional(),
+  due: z.date().optional(),
   scheduledTime: z.iso.time().optional(),
-  projectId: z.uuid().optional(),
+  projectId: z.uuid().optional().nullable(),
   habitId: z.uuid().optional(),
 });
 
-export const UpdateTaskSchema = CreateTaskSchema.partial();
+export const rawUpdateTaskSchema = rawCreateTaskSchema.partial();
+
+export const createTaskInputSchema = z.object({
+  ...rawCreateTaskSchema.omit({ durationMinutes: true }).shape,
+  durationMinutes: parseDurationSchema,
+});
+
+export const UpdateTaskInputSchema = createTaskInputSchema.partial();
 
 /* Habit Schemas */
 
-export const CreateHabitSchema = z.object({
+export const rawCreateHabitSchema = z.object({
   title: titleSchema,
   description: descriptionSchema.optional(),
-  durationMinutes: z.int().min(1).optional(),
+  durationMinutes: durationSchema,
   priority: prioritySchema.optional(),
   active: z.boolean().optional(),
   recurrenceType: PeriodUnitSchema,
   interval: z.int().min(1).max(365).optional(),
   timesPerPeriod: z.int().min(1).max(100).optional(),
-  byWeekdays: weekdaysSchema.optional(),
+  byWeekdays: habitWeekdaysSchema,
   preferredTime: z.iso.time().optional(),
   customRule: z.record(z.string(), z.any()).optional(),
 });
 
-export const UpdateHabitSchema = CreateHabitSchema.partial();
+export const rawUpdateHabitSchema = rawCreateHabitSchema.partial();
+
+export const createHabitInputSchema = z.object({
+  ...rawCreateHabitSchema.omit({ durationMinutes: true }).shape,
+  durationMinutes: parseDurationSchema,
+});
+
+export const updateHabitInputSchema = createHabitInputSchema.partial();
 
 /* Schedule Block Schemas */
 
@@ -284,10 +335,14 @@ export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>;
-export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
-export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
-export type CreateHabitInput = z.infer<typeof CreateHabitSchema>;
-export type UpdateHabitInput = z.infer<typeof UpdateHabitSchema>;
+export type FrontendCreateTaskInput = z.infer<typeof rawCreateTaskSchema>;
+export type FrontendUpdateTaskInput = z.infer<typeof rawUpdateTaskSchema>;
+export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
+export type UpdateTaskInput = z.infer<typeof UpdateTaskInputSchema>;
+export type FrontendCreateHabitInput = z.infer<typeof rawCreateHabitSchema>;
+export type FrontendUpdateHabitInput = z.infer<typeof rawCreateHabitSchema>;
+export type CreateHabitInput = z.infer<typeof rawCreateHabitSchema>;
+export type UpdateHabitInput = z.infer<typeof updateHabitInputSchema>;
 export type CreateScheduleBlockInput = z.infer<
   typeof CreateScheduleBlockSchema
 >;

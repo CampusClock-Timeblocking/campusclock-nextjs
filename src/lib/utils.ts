@@ -8,6 +8,15 @@ export function cn(...inputs: ClassValue[]) {
 export const parseDuration = (value: string): number | null => {
   const trimmed = value.trim().toLowerCase();
 
+  // Handle formats like "1h35m" or "1h 35m"
+  const combinedMatch = trimmed.match(/^(\d+)h\s*(\d+)m$/);
+  if (combinedMatch) {
+    const hours = parseInt(combinedMatch[1] ?? "");
+    const minutes = parseInt(combinedMatch[2] ?? "");
+    if (isNaN(hours) || isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  }
+
   if (trimmed.endsWith("m")) {
     const minutes = parseInt(trimmed.slice(0, -1));
     return isNaN(minutes) ? null : minutes;
@@ -30,3 +39,18 @@ export const parseDuration = (value: string): number | null => {
   const minutes = parseInt(trimmed);
   return isNaN(minutes) ? null : minutes;
 };
+
+export function formatDuration(duration: number) {
+  if (!duration) return "-";
+
+  const hours = Math.floor(duration / 60);
+  const minutes = duration % 60;
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours}h ${minutes}m`;
+  } else if (hours > 0) {
+    return `${hours}h`;
+  } else {
+    return `${minutes}m`;
+  }
+}

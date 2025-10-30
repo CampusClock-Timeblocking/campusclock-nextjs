@@ -1,6 +1,6 @@
 "use client";
 
-import type { UpdateTaskInput } from "@/lib/zod";
+import type { FrontendUpdateTaskInput, UpdateTaskInput } from "@/lib/zod";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 
@@ -20,11 +20,11 @@ export function useUpdateTaskMutation({ taskId }: { taskId: string }) {
   return {
     ...mutation,
     mutate: (
-      update: UpdateTaskInput,
+      update: FrontendUpdateTaskInput,
       options?: Parameters<typeof mutation.mutate>[1],
     ) => mutation.mutate({ id: taskId, data: update }, options),
     mutateAsync: (
-      update: UpdateTaskInput,
+      update: FrontendUpdateTaskInput,
       options?: Parameters<typeof mutation.mutateAsync>[1],
     ) => mutation.mutateAsync({ id: taskId, data: update }, options),
   };

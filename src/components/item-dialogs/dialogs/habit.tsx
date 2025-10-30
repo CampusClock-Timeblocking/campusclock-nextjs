@@ -6,6 +6,7 @@ import {
 import type { Habit } from "@prisma/client";
 import { HabitDialogContent } from "../base-content/habit";
 import { useDialog } from "../../../providers/dialog-provider";
+import { formatDuration } from "@/lib/utils";
 
 export function CreateHabitDialog() {
   const { hideDialog } = useDialog();
@@ -14,7 +15,7 @@ export function CreateHabitDialog() {
   return (
     <HabitDialogContent
       hideDialog={hideDialog}
-      submitButtonText="Create habit"
+      submitButtonText="Create"
       mutation={createHabitMutation}
       autoFocusTitle
     />
@@ -32,7 +33,9 @@ export function UpdateHabitDialog({ habit }: EditProps) {
   const initialValues = {
     title: habit.title,
     description: habit.description ?? undefined,
-    durationMinutes: habit.durationMinutes ?? undefined,
+    durationMinutes: habit.durationMinutes
+      ? formatDuration(habit.durationMinutes)
+      : "30m",
     priority: habit.priority ?? 3,
     active: habit.active,
     recurrenceType: habit.recurrenceType,
@@ -52,7 +55,7 @@ export function UpdateHabitDialog({ habit }: EditProps) {
     <HabitDialogContent
       hideDialog={hideDialog}
       mutation={editHabitMutation}
-      submitButtonText="Update habit"
+      submitButtonText="Update"
       initialValues={initialValues}
     />
   );

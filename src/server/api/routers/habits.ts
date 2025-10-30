@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { CreateHabitSchema, UpdateHabitSchema } from "@/lib/zod";
+import { createHabitInputSchema, updateHabitInputSchema } from "@/lib/zod";
 
 export const habitRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(CreateHabitSchema)
+    .input(createHabitInputSchema)
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
@@ -57,16 +57,18 @@ export const habitRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        data: UpdateHabitSchema,
+        data: updateHabitInputSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const updateData = { ...input.data };
+
       const habit = await ctx.db.habit.update({
         where: {
           id: input.id,
           userId: ctx.session.user.id,
         },
-        data: input.data,
+        data: updateData,
       });
 
       return habit;
@@ -76,16 +78,18 @@ export const habitRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.array(z.string()),
-        data: UpdateHabitSchema,
+        data: updateHabitInputSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const updateData = { ...input.data };
+
       const habit = await ctx.db.habit.updateMany({
         where: {
           id: { in: input.id },
           userId: ctx.session.user.id,
         },
-        data: input.data,
+        data: updateData,
       });
 
       return habit;

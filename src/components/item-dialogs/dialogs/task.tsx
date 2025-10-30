@@ -7,6 +7,7 @@ import {
 import type { Task } from "@prisma/client";
 import { TaskDialogContent } from "../base-content/task";
 import { useDialog } from "../../../providers/dialog-provider";
+import { formatDuration } from "@/lib/utils";
 
 export function CreateTaskDialog() {
   const { hideDialog } = useDialog();
@@ -15,7 +16,7 @@ export function CreateTaskDialog() {
   return (
     <TaskDialogContent
       hideDialog={hideDialog}
-      submitButtonText="Create task"
+      submitButtonText="Create"
       mutation={createTaskMutation}
       autoFocusTitle
     />
@@ -35,7 +36,7 @@ export function UpdateTaskDialog({ task }: EditProps) {
     description: task.description ?? "",
     priority: task.priority ?? 3,
     durationMinutes: task.durationMinutes
-      ? task.durationMinutes?.toString() + "m"
+      ? formatDuration(task.durationMinutes)
       : "30m",
     complexity: task.complexity ?? 5,
     due: task.due ?? undefined,

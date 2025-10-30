@@ -6,6 +6,7 @@ import {
 import { type ReactNode } from "react";
 import { Input } from "../../ui/input";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Props {
   title: string;
@@ -14,6 +15,7 @@ interface Props {
   mainContent: ReactNode;
   sideContent: ReactNode;
   titlePlaceholderText: string;
+  titleError?: string;
 }
 
 export const DialogContentLayout: React.FC<Props> = ({
@@ -23,6 +25,7 @@ export const DialogContentLayout: React.FC<Props> = ({
   mainContent,
   sideContent,
   titlePlaceholderText,
+  titleError,
 }) => {
   return (
     <DialogContent
@@ -35,17 +38,25 @@ export const DialogContentLayout: React.FC<Props> = ({
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={titlePlaceholderText}
-            className="rounded-none border-none px-0 !text-3xl font-semibold shadow-none focus-visible:border-0 focus-visible:ring-0"
-            autoFocus={initFocusTitle}
-          />
+          <div>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={titlePlaceholderText}
+              className={cn(
+                "rounded-none border-none px-0 !text-3xl font-semibold shadow-none focus-visible:border-0 focus-visible:ring-0",
+                titleError && "placeholder:text-destructive/50",
+              )}
+              autoFocus={initFocusTitle}
+            />
+            {titleError && (
+              <p className="mt-1 text-sm text-red-500">{titleError}</p>
+            )}
+          </div>
           {mainContent}
         </div>
 
-        <div className="bg-muted/30 flex h-full w-72 flex-col space-y-6 overflow-y-auto border-l p-6">
+        <div className="bg-muted/30 flex h-full w-[300px] flex-col space-y-6 overflow-y-auto border-l p-6">
           {sideContent}
         </div>
       </div>

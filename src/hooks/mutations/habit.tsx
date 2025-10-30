@@ -1,5 +1,5 @@
 "use client";
-import type { UpdateHabitInput } from "@/lib/zod";
+import type { FrontendUpdateHabitInput, UpdateHabitInput } from "@/lib/zod";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 
@@ -19,11 +19,11 @@ export function useUpdateHabitMutation({ habitId }: { habitId: string }) {
   return {
     ...mutation,
     mutate: (
-      update: UpdateHabitInput,
+      update: FrontendUpdateHabitInput,
       options?: Parameters<typeof mutation.mutate>[1],
     ) => mutation.mutate({ id: habitId, data: update }, options),
     mutateAsync: (
-      update: UpdateHabitInput,
+      update: FrontendUpdateHabitInput,
       options?: Parameters<typeof mutation.mutateAsync>[1],
     ) => mutation.mutateAsync({ id: habitId, data: update }, options),
   };
