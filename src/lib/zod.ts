@@ -97,6 +97,7 @@ export const UpdateProjectSchema = CreateProjectSchema.partial();
 
 export const durationSchema = z
   .string()
+  .trim()
   .min(1, "Duration is required")
   .regex(
     /^(\d+m|\d+h|\d+h\s*\d+m|\d+:([0-9]|[1-5][0-9])h)$/,
