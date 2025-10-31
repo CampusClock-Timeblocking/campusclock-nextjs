@@ -16,6 +16,7 @@ import { Loader2, User, Mail } from "lucide-react";
  * - The "Avatar Changer" here is only the rough corpus (UI skeleton). Plug your real uploader into <AvatarPicker /> later.
  */
 import { authClient } from "@/lib/auth-client";
+import { TitlePage } from "@/components/basic-components/page-layout";
 
 // --------- Small UI helpers ---------
 function FieldRow({
@@ -127,51 +128,54 @@ export default function AccountSettings() {
   // (OAuth accounts listing removed for now to simplify UI)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10 p-4 md:p-6">
-      <h1 className="text-2xl font-bold">Account Settings</h1>
-
-      {/* Profile */}
-      <Section
-        title="Profile"
-        description="Update your basic information. Email changes may require verification depending on your server config."
-        right={
-          <Button onClick={onSaveProfile} disabled={isSubmitting || !isDirty}>
-            {isSubmitting ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : null}
-            Save
-          </Button>
-        }
-      >
-        <div className="grid gap-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <FieldRow label="Name" htmlFor="name">
-              <div className="relative">
-                <User className="text-muted-foreground absolute top-2.5 left-2 size-4" />
-                <Input
-                  id="name"
-                  className="pl-8"
-                  placeholder="Your name"
-                  {...register("name")}
-                />
-              </div>
-            </FieldRow>
-            <FieldRow label="Email" htmlFor="email">
-              <div className="relative">
-                <Mail className="text-muted-foreground absolute top-2.5 left-2 size-4" />
-                <Input
-                  id="email"
-                  className="pl-8"
-                  type="email"
-                  disabled
-                  placeholder="[email protected]"
-                  {...register("email")}
-                />
-              </div>
-            </FieldRow>
+    <TitlePage
+      title="Account settings"
+      description="Manage your account"
+      className="max-w-6xl"
+    >
+      <div className="border-border rounded-md border p-4">
+        <Section
+          title="Profile"
+          description="Update your basic information. Email changes may require verification depending on your server config."
+          right={
+            <Button onClick={onSaveProfile} disabled={isSubmitting || !isDirty}>
+              {isSubmitting ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : null}
+              Save
+            </Button>
+          }
+        >
+          <div className="grid gap-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <FieldRow label="Name" htmlFor="name">
+                <div className="relative">
+                  <User className="text-muted-foreground absolute top-2.5 left-2 size-4" />
+                  <Input
+                    id="name"
+                    className="pl-8"
+                    placeholder="Your name"
+                    {...register("name")}
+                  />
+                </div>
+              </FieldRow>
+              <FieldRow label="Email" htmlFor="email">
+                <div className="relative">
+                  <Mail className="text-muted-foreground absolute top-2.5 left-2 size-4" />
+                  <Input
+                    id="email"
+                    className="pl-8"
+                    type="email"
+                    disabled
+                    placeholder="[email protected]"
+                    {...register("email")}
+                  />
+                </div>
+              </FieldRow>
+            </div>
           </div>
-        </div>
-      </Section>
-    </div>
+        </Section>
+      </div>
+    </TitlePage>
   );
 }

@@ -1,64 +1,123 @@
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { PeriodUnit } from "@prisma/client";
 import { z } from "zod";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { createHabitInputSchema, updateHabitInputSchema } from "@/lib/zod";
 
-export const habitsRouter = createTRPCRouter({
-  get: protectedProcedure.query(async ({ ctx }) => {
+export const habitRouter = createTRPCRouter({
+  create: protectedProcedure
+    .input(createHabitInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const habit = await ctx.db.habit.create({
+        data: {
+          ...input,
+          userId,
+          active: input.active ?? true,
+          interval: input.interval ?? 1,
+          timesPerPeriod: input.timesPerPeriod ?? 1,
+          byWeekdays: input.byWeekdays ?? [],
+        },
+      });
+
+      return habit;
+    }),
+
+  getAll: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    return ctx.db.habit.findMany({
+
+    const habits = await ctx.db.habit.findMany({
       where: {
         userId,
       },
     });
+
+    return habits;
   }),
 
-  create: protectedProcedure
-    .input(
-      z.object({
-        title: z.string(),
-        recurrenceRule: z.string(),
-        preferredTime: z.string(),
-        durationMinutes: z.number(),
-        active: z.boolean(),
-        recurrenceType: z.enum(PeriodUnit),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      return ctx.db.habit.create({
-        data: { ...input, userId },
+
+      const habit = await ctx.db.habit.findFirst({
+        where: {
+          id: input.id,
+          userId,
+        },
       });
+
+      if (!habit) {
+        throw new Error("Habit not found");
+      }
+
+      return habit;
     }),
 
   update: protectedProcedure
     .input(
       z.object({
         id: z.string(),
-        title: z.string(),
-        recurrenceRule: z.string(),
-        preferredTime: z.string(),
-        durationMinutes: z.number(),
-        active: z.boolean(),
+        data: updateHabitInputSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
-      return ctx.db.habit.update({
-        where: { id: input.id, userId },
-        data: input,
+      const updateData = { ...input.data };
+
+      const habit = await ctx.db.habit.update({
+        where: {
+          id: input.id,
+          userId: ctx.session.user.id,
+        },
+        data: updateData,
       });
+
+      return habit;
+    }),
+
+  updateMany: protectedProcedure
+    .input(
+      z.object({
+        id: z.array(z.string()),
+        data: updateHabitInputSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updateData = { ...input.data };
+
+      const habit = await ctx.db.habit.updateMany({
+        where: {
+          id: { in: input.id },
+          userId: ctx.session.user.id,
+        },
+        data: updateData,
+      });
+
+      return habit;
     }),
 
   delete: protectedProcedure
-    .input(
-      z.object({
-        id: z.string(),
-      }),
-    )
+    .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
-      return ctx.db.habit.delete({
-        where: { id: input.id, userId },
+      await ctx.db.habit.delete({
+        where: {
+          id: input.id,
+          userId: ctx.session.user.id,
+        },
       });
+
+      return { success: true };
+    }),
+
+  deleteMany: protectedProcedure
+    .input(z.object({ ids: z.array(z.string()) }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db.habit.deleteMany({
+        where: {
+          id: { in: input.ids },
+          userId: ctx.session.user.id,
+        },
+      });
+
+      return { count: result.count };
     }),
 });
