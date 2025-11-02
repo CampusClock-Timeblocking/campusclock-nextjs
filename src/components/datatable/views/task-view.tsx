@@ -9,15 +9,9 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import type { columns, TaskWithProject } from "../columns/task-columns";
+import type { TaskWithProject } from "../columns/task-columns";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Boxes, ChevronDown, Trash2 } from "lucide-react";
+import { Boxes, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "../data-table";
 import SelectCreate from "@/components/select-create";
@@ -39,14 +33,31 @@ import {
   useUpdateManyTasksMutation,
 } from "@/hooks/mutations/task";
 import { UpdateTaskDialog } from "@/components/item-dialogs/dialogs/task";
+import { ActivityViewSkeleton } from "./activities-skeleton";
+import { ColumnVisibility } from "../column-visibility";
 
 interface Props {
   columns: ColumnDef<TaskWithProject>[];
   data: TaskWithProject[];
+  isLoading?: boolean;
 }
 
-export function TaskView({ columns, data }: Props) {
-  const { data: projects = [] } = api.project.getAll.useQuery();
+interface ViewProps {
+  columns: ColumnDef<TaskWithProject>[];
+  data: TaskWithProject[] | undefined;
+  isLoading?: boolean;
+}
+
+export function TaskView({ columns, data, isLoading }: ViewProps) {
+  if (isLoading || !data) {
+    return <ActivityViewSkeleton columns={columns} />;
+  }
+
+  return <View data={data} columns={columns} />;
+}
+
+function View({ columns, data }: Props) {
+  const { data: projects } = api.project.getAll.useQuery();
   const { showDialog } = useDialog();
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -111,10 +122,12 @@ export function TaskView({ columns, data }: Props) {
                 <SelectCreate
                   value={getCommonProject()}
                   multi={false}
-                  options={projects.map((p) => ({
-                    label: p.title,
-                    value: p.id,
-                  }))}
+                  options={
+                    projects?.map((p) => ({
+                      label: p.title,
+                      value: p.id,
+                    })) ?? []
+                  }
                   onChange={(change) =>
                     updateManyTaskMutation.mutate({
                       ids: selectedIds,
@@ -122,7 +135,9 @@ export function TaskView({ columns, data }: Props) {
                     })
                   }
                   onMore={(option) => {
-                    const clicked = projects.find((p) => p.id === option.value);
+                    const clicked = projects?.find(
+                      (p) => p.id === option.value,
+                    );
                     if (clicked)
                       showDialog(<UpdateProjectDialog project={clicked} />);
                   }}
@@ -162,32 +177,7 @@ export function TaskView({ columns, data }: Props) {
             }
             className="max-w-sm"
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ColumnVisibility table={table} />
         </div>
       </div>
       <DataTable

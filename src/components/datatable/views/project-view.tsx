@@ -9,19 +9,11 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import type { columns, TaskWithProject } from "../columns/task-columns";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Boxes, ChevronDown, Trash2 } from "lucide-react";
+import { Boxes, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "../data-table";
 import SelectCreate from "@/components/select-create";
-import { api } from "@/trpc/react";
 import { useDialog } from "@/providers/dialog-provider";
 import {
   CreateProjectDialog,
@@ -35,22 +27,34 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group";
 import { AsyncButton } from "@/components/basic-components/async-action-button";
 import {
-  useDeleteManyTasks,
-  useUpdateManyTasksMutation,
-} from "@/hooks/mutations/task";
-import { UpdateTaskDialog } from "@/components/item-dialogs/dialogs/task";
-import {
   useDelteManyProjectMutation,
   useUpdateManyProjectsMutation,
 } from "@/hooks/mutations/project";
 import type { ProjectWithParent } from "../columns/project-columns";
+import { ActivityViewSkeleton } from "./activities-skeleton";
+import { ColumnVisibility } from "../column-visibility";
 
 interface Props {
   columns: ColumnDef<ProjectWithParent>[];
   data: ProjectWithParent[];
+  isLoading?: boolean;
 }
 
-export function ProjectView({ columns, data }: Props) {
+interface ViewProps {
+  columns: ColumnDef<ProjectWithParent>[];
+  data: ProjectWithParent[] | undefined;
+  isLoading?: boolean;
+}
+
+export function ProjectView({ columns, data, isLoading }: ViewProps) {
+  if (isLoading || !data) {
+    return <ActivityViewSkeleton columns={columns} />;
+  }
+
+  return <View data={data} columns={columns} />;
+}
+
+function View({ columns, data }: Props) {
   const { showDialog } = useDialog();
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -166,32 +170,7 @@ export function ProjectView({ columns, data }: Props) {
             }
             className="max-w-sm"
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ColumnVisibility table={table} />
         </div>
       </div>
       <DataTable

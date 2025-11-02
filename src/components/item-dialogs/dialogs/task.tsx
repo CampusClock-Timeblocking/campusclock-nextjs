@@ -50,7 +50,7 @@ export function UpdateTaskDialog({ task }: EditProps) {
     <TaskDialogContent
       hideDialog={hideDialog}
       mutation={editTaskMutation}
-      submitButtonText="Update task"
+      submitButtonText="Update"
       initialValues={initialValues}
     />
   );

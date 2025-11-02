@@ -11,13 +11,7 @@ import {
 import { useState } from "react";
 import type { Habit } from "@prisma/client";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ChevronDown, Power, Trash2 } from "lucide-react";
+import { Power, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "../data-table";
 import { useDialog } from "@/providers/dialog-provider";
@@ -28,16 +22,31 @@ import {
   useUpdateManyHabitsMutations,
 } from "@/hooks/mutations/habit";
 import { UpdateHabitDialog } from "@/components/item-dialogs/dialogs/habit";
-import { api } from "@/trpc/react";
+import { ActivityViewSkeleton } from "./activities-skeleton";
+import { ColumnVisibility } from "../column-visibility";
 
 interface Props {
   columns: ColumnDef<Habit>[];
   data: Habit[];
+  isLoading?: boolean;
 }
 
-export function HabitView({ columns, data }: Props) {
+interface ViewProps {
+  columns: ColumnDef<Habit>[];
+  data: Habit[] | undefined;
+  isLoading?: boolean;
+}
+
+export function HabitView({ columns, data, isLoading }: ViewProps) {
+  if (isLoading || !data) {
+    return <ActivityViewSkeleton columns={columns} />;
+  }
+
+  return <View data={data} columns={columns} />;
+}
+
+function View({ columns, data }: Props) {
   const { showDialog } = useDialog();
-  const utils = api.useUtils();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -123,32 +132,7 @@ export function HabitView({ columns, data }: Props) {
             }
             className="max-w-sm"
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ColumnVisibility table={table} />
         </div>
       </div>
       <DataTable

@@ -19,12 +19,11 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useCommandN } from "@/hooks/kbd";
 
 export default function TasksPage() {
-  const { data: tasks = [], isLoading: tasksLoading } =
-    api.task.getAll.useQuery();
-  const { data: projects = [], isLoading: projectsLoading } =
+  const { data: tasks, isLoading: tasksLoading } = api.task.getAll.useQuery();
+  const { data: projects, isLoading: projectsLoading } =
     api.project.getAll.useQuery();
 
-  const { data: habits = [], isLoading: habitsLoading } =
+  const { data: habits, isLoading: habitsLoading } =
     api.habit.getAll.useQuery();
 
   const { showDialog } = useDialog();
@@ -47,38 +46,38 @@ export default function TasksPage() {
       {
         label: "Tasks",
         icon: List,
-        badge: tasksLoading ? null : tasks.length,
+        badge: tasksLoading ? null : (tasks?.length ?? 0),
         action: {
-          actionButtonText: "New Task",
+          actionButtonText: "New task",
           action: createTask,
         },
       },
       {
         label: "Projects",
         icon: Boxes,
-        badge: projectsLoading ? null : projects.length,
+        badge: projectsLoading ? null : (projects?.length ?? 0),
         action: {
-          actionButtonText: "New Project",
+          actionButtonText: "New project",
           action: createProject,
         },
       },
       {
         label: "Habits",
         icon: CalendarSync,
-        badge: habitsLoading ? null : habits.length,
+        badge: habitsLoading ? null : (habits?.length ?? 0),
         action: {
-          actionButtonText: "New Habit",
+          actionButtonText: "New habit",
           action: createHabit,
         },
       },
     ],
     [
       tasksLoading,
-      tasks.length,
+      tasks,
       projectsLoading,
-      projects.length,
+      projects,
       habitsLoading,
-      habits.length,
+      habits,
       createTask,
       createProject,
       createHabit,
@@ -87,11 +86,7 @@ export default function TasksPage() {
 
   const [activeTab, setActiveTab] = useState(tabs[0]!);
 
-  const handleCommandN = useCallback(() => {
-    activeTab.action?.action();
-  }, [activeTab]);
-
-  useCommandN(handleCommandN);
+  useCommandN(() => activeTab.action?.action());
 
   return (
     <TitlePage
@@ -112,13 +107,21 @@ export default function TasksPage() {
       }
     >
       {activeTab.label === "Tasks" && (
-        <TaskView columns={taskColumns} data={tasks} />
+        <TaskView columns={taskColumns} data={tasks} isLoading={tasksLoading} />
       )}
       {activeTab.label === "Projects" && (
-        <ProjectView columns={projectColumns} data={projects} />
+        <ProjectView
+          columns={projectColumns}
+          data={projects}
+          isLoading={projectsLoading}
+        />
       )}
       {activeTab.label === "Habits" && (
-        <HabitView columns={habitColumns} data={habits} />
+        <HabitView
+          columns={habitColumns}
+          data={habits}
+          isLoading={habitsLoading}
+        />
       )}
     </TitlePage>
   );

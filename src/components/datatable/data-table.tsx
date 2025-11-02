@@ -9,13 +9,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { ReactNode } from "react";
+import { Skeleton } from "../ui/skeleton";
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<TData, TValue> {
+    skeleton?: ReactNode;
+  }
+}
 
 interface DataTableProps<TData> {
   table: TableState<TData>;
   onRowClick?: (row: TData) => void;
+  isLoading?: boolean;
+  loadingRows?: number;
 }
 
-export function DataTable<TData>({ table, onRowClick }: DataTableProps<TData>) {
+export function DataTable<TData>({
+  table,
+  onRowClick,
+  isLoading = false,
+  loadingRows = 10,
+}: DataTableProps<TData>) {
+  const defaultSkeleton = <Skeleton className="h-4 w-full max-w-[200px]" />;
+
   return (
     <div className="overflow-hidden rounded-md border">
       <Table>
@@ -38,7 +54,17 @@ export function DataTable<TData>({ table, onRowClick }: DataTableProps<TData>) {
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows?.length ? (
+          {isLoading ? (
+            Array.from({ length: loadingRows }).map((_, rowIndex) => (
+              <TableRow key={`skeleton-${rowIndex}`}>
+                {table.getVisibleFlatColumns().map((column) => (
+                  <TableCell key={column.id}>
+                    {column.columnDef.meta?.skeleton ?? defaultSkeleton}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
@@ -59,7 +85,7 @@ export function DataTable<TData>({ table, onRowClick }: DataTableProps<TData>) {
                 colSpan={table.getAllColumns().length}
                 className="h-24 text-center"
               >
-                No tasks found.
+                No data.
               </TableCell>
             </TableRow>
           )}
