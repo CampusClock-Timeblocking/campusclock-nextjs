@@ -3,6 +3,8 @@ import { Button } from "../ui/button";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "../ui/badge";
 import type { TabAction } from "./page-layout";
+import { useSearchParamsHelper } from "@/hooks/use-search-params";
+import { useMemo, useCallback } from "react";
 
 export interface TabOption {
   label: string;
@@ -14,24 +16,36 @@ export interface TabOption {
 
 interface Props {
   tabs: TabOption[];
-  active: string;
-  setActive: (active: TabOption) => void;
   className?: string;
+  defaultTab?: string;
 }
 
-export function TabsRow({ tabs, active, setActive, className }: Props) {
+export function TabsRow({ tabs, className, defaultTab }: Props) {
+  const { setSearchParam } = useSearchParamsHelper();
+
+  const activeTab = useActiveTab(tabs, defaultTab);
+
+  const handleTabClick = useCallback(
+    (tab: string) => {
+      setSearchParam("tab", tab.toLowerCase());
+    },
+    [setSearchParam],
+  );
+
   return (
     <div className={cn("flex gap-0.5", className)}>
       {tabs.map((tab, index) => (
         <div
           key={`tab-${index}`}
-          className={tab.label === active ? "" : "text-muted-foreground"}
+          className={
+            tab.label === activeTab?.label ? "" : "text-muted-foreground"
+          }
         >
           <Button
             variant="ghost"
             size="sm"
             className="group mb-1"
-            onClick={() => setActive(tab)}
+            onClick={() => handleTabClick(tab.label)}
           >
             {tab.icon && <tab.icon />}
             {tab.label}
@@ -52,13 +66,32 @@ export function TabsRow({ tabs, active, setActive, className }: Props) {
           </Button>
           <div
             className={
-              tab.label === active ? "mx-1 border-b-[3px] border-blue-500" : ""
+              tab.label === activeTab?.label
+                ? "mx-1 border-b-[3px] border-blue-500"
+                : ""
             }
           ></div>
         </div>
       ))}
     </div>
   );
+}
+
+export function useActiveTab(tabs: TabOption[], defaultTab?: string) {
+  const { params } = useSearchParamsHelper();
+
+  const activeTabLabel =
+    params.get("tab") ?? (defaultTab || tabs[0]?.label.toLowerCase() || "");
+
+  const activeTab = useMemo(
+    () =>
+      tabs.find(
+        (t) => t.label.toLowerCase() === activeTabLabel.toLowerCase(),
+      ) || tabs[0],
+    [tabs, activeTabLabel],
+  );
+
+  return activeTab;
 }
 
 interface SkeletonProps {

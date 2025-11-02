@@ -6,8 +6,7 @@ import { TabsRow, type TabOption } from "./tabs-row";
 
 interface TabModule {
   tabs: TabOption[];
-  activeTab: string;
-  setActiveTab: (active: TabOption) => void;
+  defaultTab?: string;
 }
 
 interface Props {
@@ -100,11 +99,7 @@ export function TitlePage({
 
         <div className="flex">
           {tabModule && (
-            <TabsRow
-              tabs={tabModule.tabs}
-              active={tabModule.activeTab}
-              setActive={tabModule.setActiveTab}
-            />
+            <TabsRow tabs={tabModule.tabs} defaultTab={tabModule.defaultTab} />
           )}
           <div className="ml-auto flex">{section}</div>
         </div>

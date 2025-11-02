@@ -13,7 +13,8 @@ import { CreateHabitDialog } from "@/components/item-dialogs/dialogs/habit";
 import { HabitView } from "@/components/datatable/views/habit-view";
 import { habitColumns } from "@/components/datatable/columns/habit-columns";
 import { TitlePage } from "@/components/basic-components/page-layout";
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import { useActiveTab } from "@/components/basic-components/tabs-row";
 import type { TabOption } from "@/components/basic-components/tabs-row";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useCommandN } from "@/hooks/kbd";
@@ -84,17 +85,20 @@ export default function TasksPage() {
     ],
   );
 
-  const [activeTab, setActiveTab] = useState(tabs[0]!);
+  const activeTab = useActiveTab(tabs, "tasks");
 
-  useCommandN(() => activeTab.action?.action());
+  useCommandN(() => activeTab?.action?.action());
 
   return (
     <TitlePage
       title="Activities"
       description="Manage your tasks, projects & habits."
-      tabModule={{ tabs, activeTab: activeTab.label, setActiveTab }}
+      tabModule={{
+        tabs,
+        defaultTab: "tasks",
+      }}
       actionButton={
-        activeTab.action && (
+        activeTab?.action && (
           <Button onClick={activeTab.action.action} variant="outline">
             <Plus />
             {activeTab.action.actionButtonText}
@@ -106,21 +110,21 @@ export default function TasksPage() {
         )
       }
     >
-      {activeTab.label === "Tasks" && (
+      {activeTab?.label === "Tasks" && (
         <TaskView
           columns={taskColumns}
           data={tasks ?? []}
           isLoading={tasksLoading}
         />
       )}
-      {activeTab.label === "Projects" && (
+      {activeTab?.label === "Projects" && (
         <ProjectView
           columns={projectColumns}
           data={projects ?? []}
           isLoading={projectsLoading}
         />
       )}
-      {activeTab.label === "Habits" && (
+      {activeTab?.label === "Habits" && (
         <HabitView
           columns={habitColumns}
           data={habits ?? []}
