@@ -2,10 +2,20 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { ArrowUpDown } from "lucide-react";
 import { type Project, ProjectStatus } from "@prisma/client";
 import { format } from "date-fns";
+import { SortableHeader } from "../sortable-header-button";
+import {
+  CircleCheck,
+  CircleDashed,
+  CircleOff,
+  Loader,
+  Megaphone,
+  OctagonAlert,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PriorityBadge } from "./components";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type ProjectWithParent = Project & {
   parent?: {
@@ -36,151 +46,120 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    meta: {
+      skeleton: <Skeleton className="h-4 w-4 rounded" />,
+    },
   },
   {
     accessorKey: "title",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Name</SortableHeader>
+    ),
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("title")}</div>
     ),
+    meta: {
+      skeleton: <Skeleton className="h-4 w-full max-w-[160px]" />,
+    },
   },
   {
     accessorKey: "status",
-    header: ({ column }) => {
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <CircleDashed />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => {
+      const status = row.original.status;
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        <Badge
+          variant="outline"
+          className="text-muted-foreground rounded-full px-1.5"
         >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {getStatusIcon(status)}
+          <span className="text-xs capitalize">
+            {status.toLowerCase().replace("_", " ")}
+          </span>
+        </Badge>
       );
     },
-    cell: ({ row }) => {
-      const status = row.getValue("status") as ProjectStatus | null;
-      if (!status) return <div className="text-sm">-</div>;
-
-      const statusMap: Record<ProjectStatus, string> = {
-        NOT_STARTED: "Not started",
-        IN_PROGRESS: "In progress",
-        COMPLETED: "Completed",
-        CANCELLED: "Cancelled",
-      };
-
-      return <div className="text-sm">{statusMap[status] || status}</div>;
+    meta: {
+      skeleton: <Skeleton className="h-[22px] w-20 rounded-full" />,
     },
   },
   {
     accessorKey: "priority",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Priority
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const priority = row.getValue("priority") as number | null;
-      return <div className="text-sm">{priority}</div>;
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <OctagonAlert />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+    meta: {
+      skeleton: <Skeleton className="h-[22px] w-[22px] rounded-full" />,
     },
   },
   {
     accessorKey: "startDate",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Start Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Start Date</SortableHeader>
+    ),
     cell: ({ row }) => {
-      const startDate = row.getValue("startDate") as Date | null;
+      const startDate = row.original.startDate;
       return (
         <div className="text-sm">
           {startDate ? format(new Date(startDate), "MMM d, yyyy") : "-"}
         </div>
       );
     },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-24" />,
+    },
   },
   {
     accessorKey: "deadline",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Deadline
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Deadline</SortableHeader>
+    ),
     cell: ({ row }) => {
-      const deadline = row.getValue("deadline") as Date | null;
+      const deadline = row.original.deadline;
       return (
         <div className="text-sm">
           {deadline ? format(new Date(deadline), "MMM d, yyyy") : "-"}
         </div>
       );
     },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-24" />,
+    },
   },
   {
     id: "parent",
     accessorFn: (row) => row.parent?.title,
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Parent Project
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Parent</SortableHeader>
+    ),
     cell: ({ row }) => {
       const parent = row.original.parent?.title;
       return <div className="text-sm">{parent || "-"}</div>;
     },
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: ({ row }) => {
-      const description = row.getValue("description") as string | null;
-      if (!description)
-        return <div className="text-muted-foreground text-sm">-</div>;
-
-      // Truncate long descriptions
-      const truncated =
-        description.length > 50
-          ? `${description.substring(0, 50)}...`
-          : description;
-
-      return (
-        <div className="text-muted-foreground max-w-xs text-sm">
-          {truncated}
-        </div>
-      );
+    meta: {
+      skeleton: <Skeleton className="h-4 w-24" />,
     },
   },
 ];
+
+function getStatusIcon(status: ProjectStatus) {
+  switch (status) {
+    case ProjectStatus.NOT_STARTED:
+      return <CircleDashed />;
+    case ProjectStatus.IN_PROGRESS:
+      return <Loader />;
+    case ProjectStatus.COMPLETED:
+      return <CircleCheck />;
+    case ProjectStatus.CANCELLED:
+      return <CircleOff />;
+    default:
+      return null;
+  }
+}

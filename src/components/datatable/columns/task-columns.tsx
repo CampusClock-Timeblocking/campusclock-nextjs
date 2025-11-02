@@ -2,11 +2,29 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { ArrowUpDown } from "lucide-react";
+import {
+  Boxes,
+  CalendarClock,
+  CaseSensitive,
+  CircleCheck,
+  CircleDashed,
+  CircleOff,
+  Loader,
+  Megaphone,
+  OctagonAlert,
+  Pause,
+  RedoDot,
+  SkipForward,
+  Timer,
+} from "lucide-react";
 import { type Task, TaskStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { formatDuration } from "@/lib/utils";
+import { SortableHeader } from "../sortable-header-button";
+import { ca } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
+import { PriorityBadge } from "./components";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type TaskWithProject = Task & {
   project?: {
@@ -37,114 +55,108 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    meta: {
+      skeleton: <Skeleton className="h-4 w-4 rounded" />,
+    },
   },
   {
     accessorKey: "title",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("title")}</div>
+    header: ({ column }) => (
+      <SortableHeader column={column}>Name</SortableHeader>
     ),
+    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
+    meta: {
+      skeleton: <Skeleton className="h-4 w-full max-w-[160px]" />,
+    },
   },
   {
-    id: "project",
-    accessorFn: (row) => row.project?.title,
-    header: ({ column }) => {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <CircleDashed className="h-4 w-4" />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => {
+      const status = row.original.status;
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        <Badge
+          variant="outline"
+          className="text-muted-foreground rounded-full px-1.5"
         >
-          Project
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          {getStatusIcon(status)}
+          <span className="text-xs capitalize">
+            {status.toLowerCase().replace("_", " ")}
+          </span>
+        </Badge>
       );
     },
-    cell: ({ row }) => {
-      const project = row.original.project?.title;
-      return <div className="text-sm">{project || "-"}</div>;
+    meta: {
+      skeleton: <Skeleton className="h-[22px] w-20 rounded-full" />,
+    },
+  },
+  {
+    accessorKey: "priority",
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <OctagonAlert />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+    meta: {
+      skeleton: <Skeleton className="h-[22px] w-[22px] rounded-full" />,
     },
   },
   {
     accessorKey: "due",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Due
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Due</SortableHeader>
+    ),
     cell: ({ row }) => {
-      const due = row.getValue("due") as Date | null;
+      const due = row.original.due;
       return (
         <div className="text-sm">
           {due ? format(new Date(due), "MMM d, yyyy") : "-"}
         </div>
       );
     },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-24" />,
+    },
   },
   {
-    accessorKey: "priority",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Priority
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    id: "project",
+    accessorFn: (row) => row.project?.title,
+    header: ({ column }) => (
+      <SortableHeader column={column}>Project</SortableHeader>
+    ),
     cell: ({ row }) => {
-      const priority = row.getValue("priority") as number | null;
-      return <div className="text-sm">{priority ?? "-"}</div>;
+      const project = row.original.project?.title;
+      return <div className="text-sm">{project || "-"}</div>;
+    },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-28" />,
     },
   },
   {
     accessorKey: "scheduledTime",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Scheduled Time
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Scheduled</SortableHeader>
+    ),
     cell: ({ row }) => {
-      const scheduledTime = row.getValue("scheduledTime") as string | null;
+      const scheduledTime = row.original.scheduledTime;
       return <div className="text-sm">{scheduledTime || "-"}</div>;
+    },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-24" />,
     },
   },
   {
     accessorKey: "durationMinutes",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Duration
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <Timer className="h-4 w-4" />
+      </SortableHeader>
+    ),
     cell: ({ row }) => (
       <div className="text-sm">
         {row.original.durationMinutes
@@ -152,17 +164,29 @@ export const columns: ColumnDef<TaskWithProject>[] = [
           : "-"}
       </div>
     ),
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.getValue("status") as TaskStatus;
-      return (
-        <div className="text-sm capitalize">
-          {status.toLowerCase().replace("_", " ")}
-        </div>
-      );
+    meta: {
+      skeleton: <Skeleton className="h-4 w-12" />,
     },
   },
 ];
+
+function getStatusIcon(status: TaskStatus) {
+  switch (status) {
+    case TaskStatus.TO_DO:
+      return <CircleDashed />;
+    case TaskStatus.SNOOZED:
+      return <RedoDot />;
+    case TaskStatus.SKIPPED:
+      return <SkipForward />;
+    case TaskStatus.IN_PROGRESS:
+      return <Loader />;
+    case TaskStatus.PAUSED:
+      return <Pause />;
+    case TaskStatus.COMPLETED:
+      return <CircleCheck />;
+    case TaskStatus.CANCELLED:
+      return <CircleOff />;
+    default:
+      return null;
+  }
+}

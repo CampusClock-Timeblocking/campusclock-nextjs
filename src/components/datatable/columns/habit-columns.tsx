@@ -2,10 +2,23 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { ArrowUpDown } from "lucide-react";
 import { type Habit, PeriodUnit } from "@prisma/client";
 import { format } from "date-fns";
+import { SortableHeader } from "../sortable-header-button";
+import {
+  AlertOctagon,
+  CalendarSync,
+  Moon,
+  Power,
+  Repeat,
+  Sun,
+  Timer,
+} from "lucide-react";
+import { cn, formatDuration } from "@/lib/utils";
+import { B, P } from "node_modules/@upstash/redis/zmscore-Cq_Bzgy4.mjs";
+import { PriorityBadge } from "./components";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const habitColumns: ColumnDef<Habit>[] = [
   {
@@ -30,68 +43,53 @@ export const habitColumns: ColumnDef<Habit>[] = [
     ),
     enableSorting: false,
     enableHiding: false,
+    meta: {
+      skeleton: <Skeleton className="h-4 w-4 rounded" />,
+    },
   },
   {
     accessorKey: "title",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Name</SortableHeader>
+    ),
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("title")}</div>
     ),
+    meta: {
+      skeleton: <Skeleton className="h-4 w-full max-w-[200px]" />,
+    },
   },
   {
     accessorKey: "active",
-    header: ({ column }) => {
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <Power />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => {
+      const active = row.original.active;
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Active
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <Badge variant="outline" className={cn("rounded-full text-xs")}>
+          {active ? (
+            <span className="text-green-400">Active</span>
+          ) : (
+            <span className="text-muted-foreground">Inactive</span>
+          )}
+        </Badge>
       );
     },
-    cell: ({ row }) => {
-      const active = row.getValue("active") as boolean;
-      return (
-        <div className="text-sm">
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-              active
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-700"
-            }`}
-          >
-            {active ? "Active" : "Inactive"}
-          </span>
-        </div>
-      );
+    meta: {
+      skeleton: <Skeleton className="h-6 w-16 rounded-full" />,
     },
   },
   {
     id: "recurrence",
     accessorFn: (row) => `${row.interval} ${row.recurrenceType}`,
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Recurrence
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <Repeat />
+      </SortableHeader>
+    ),
     cell: ({ row }) => {
       const interval = row.original.interval;
       const recurrenceType = row.original.recurrenceType as PeriodUnit;
@@ -112,23 +110,21 @@ export const habitColumns: ColumnDef<Habit>[] = [
         </div>
       );
     },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-14" />,
+    },
   },
   {
     accessorKey: "timesPerPeriod",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Times/Period
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Times/Period</SortableHeader>
+    ),
     cell: ({ row }) => {
       const times = row.getValue("timesPerPeriod") as number;
       return <div className="text-sm">{times}x</div>;
+    },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-8" />,
     },
   },
   {
@@ -139,26 +135,35 @@ export const habitColumns: ColumnDef<Habit>[] = [
       if (!weekdays || weekdays.length === 0)
         return <div className="text-sm">-</div>;
 
-      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const dayNames = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
       const sortedDays = [...weekdays].sort((a, b) => a - b);
       const dayLabels = sortedDays.map((day) => dayNames[day]);
 
-      return <div className="text-sm">{dayLabels.join(", ")}</div>;
+      return (
+        <div className="flex gap-1">
+          {dayLabels.map((d) => (
+            <Badge variant="outline" className="rounded-full text-xs">
+              {d}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+    meta: {
+      skeleton: (
+        <div className="flex gap-1">
+          <Skeleton className="h-[22px] w-8 rounded-full" />
+          <Skeleton className="h-[22px] w-8 rounded-full" />
+          <Skeleton className="h-[22px] w-8 rounded-full" />
+        </div>
+      ),
     },
   },
   {
     accessorKey: "preferredTime",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Preferred Time
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <SortableHeader column={column}>Preferred Time</SortableHeader>
+    ),
     cell: ({ row }) => {
       const preferredTime = row.getValue("preferredTime") as Date | null;
       return (
@@ -167,56 +172,38 @@ export const habitColumns: ColumnDef<Habit>[] = [
         </div>
       );
     },
+    meta: {
+      skeleton: <Skeleton className="h-4 w-12" />,
+    },
   },
   {
     accessorKey: "durationMinutes",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Duration
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const duration = row.getValue("durationMinutes") as number | null;
-      if (!duration) return <div className="text-sm">-</div>;
-
-      const hours = Math.floor(duration / 60);
-      const minutes = duration % 60;
-
-      if (hours > 0 && minutes > 0) {
-        return (
-          <div className="text-sm">
-            {hours}h {minutes}m
-          </div>
-        );
-      } else if (hours > 0) {
-        return <div className="text-sm">{hours}h</div>;
-      } else {
-        return <div className="text-sm">{minutes}m</div>;
-      }
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <Timer />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm">
+        {row.original.durationMinutes
+          ? formatDuration(row.original.durationMinutes)
+          : "-"}
+      </div>
+    ),
+    meta: {
+      skeleton: <Skeleton className="h-4 w-12" />,
     },
   },
   {
     accessorKey: "priority",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Priority
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const priority = row.getValue("priority") as number | null;
-      return <div className="text-sm">{priority ?? "-"}</div>;
+    header: ({ column }) => (
+      <SortableHeader column={column}>
+        <AlertOctagon />
+      </SortableHeader>
+    ),
+    cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+    meta: {
+      skeleton: <Skeleton className="h-[22px] w-[22px] rounded-full" />,
     },
   },
 ];

@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "@daveyplate/better-auth-ui/css";
 
-
 @custom-variant dark (&:is(.dark *));
 
 @theme {
@@ -92,7 +91,7 @@
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --accent-nested: oklch(0.94 0 0);
+  --accent-nested: oklch(0.95 0 0);
   --accent-nested-foreground: oklch(0.205 0 0);
 }
 
@@ -130,7 +129,7 @@
   --sidebar-ring: oklch(0.442 0.017 285.786);
   --destructive-foreground: oklch(0.704 0.191 22.216);
   --radius: 0.625rem;
-  --accent-nested: oklch(0.31 0 0);
+  --accent-nested: oklch(0.3 0 0);
   --accent-nested-foreground: oklch(0.985 0 0);
 }
 
