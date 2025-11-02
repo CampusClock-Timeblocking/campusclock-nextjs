@@ -107,19 +107,23 @@ export default function TasksPage() {
       }
     >
       {activeTab.label === "Tasks" && (
-        <TaskView columns={taskColumns} data={tasks} isLoading={tasksLoading} />
+        <TaskView
+          columns={taskColumns}
+          data={tasks ?? []}
+          isLoading={tasksLoading}
+        />
       )}
       {activeTab.label === "Projects" && (
         <ProjectView
           columns={projectColumns}
-          data={projects}
+          data={projects ?? []}
           isLoading={projectsLoading}
         />
       )}
       {activeTab.label === "Habits" && (
         <HabitView
           columns={habitColumns}
-          data={habits}
+          data={habits ?? []}
           isLoading={habitsLoading}
         />
       )}

@@ -1,6 +1,10 @@
 "use client";
 
-import { type Table as TableState, flexRender } from "@tanstack/react-table";
+import {
+  type RowSelectionState,
+  type Table as TableState,
+  flexRender,
+} from "@tanstack/react-table";
 import {
   Table,
   TableBody,
@@ -93,4 +97,8 @@ export function DataTable<TData>({
       </Table>
     </div>
   );
+}
+
+export function getSelectedIdsFromState(state: RowSelectionState) {
+  return Object.keys(state).filter((id) => state[id]);
 }

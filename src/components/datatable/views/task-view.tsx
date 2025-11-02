@@ -5,6 +5,7 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type Row,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
@@ -13,7 +14,7 @@ import type { TaskWithProject } from "../columns/task-columns";
 import { Input } from "@/components/ui/input";
 import { Boxes, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "../data-table";
+import { DataTable, getSelectedIdsFromState } from "../data-table";
 import SelectCreate from "@/components/select-create";
 import { api } from "@/trpc/react";
 import { useDialog } from "@/providers/dialog-provider";
@@ -33,7 +34,6 @@ import {
   useUpdateManyTasksMutation,
 } from "@/hooks/mutations/task";
 import { UpdateTaskDialog } from "@/components/item-dialogs/dialogs/task";
-import { ActivityViewSkeleton } from "./activities-skeleton";
 import { ColumnVisibility } from "../column-visibility";
 
 interface Props {
@@ -42,21 +42,7 @@ interface Props {
   isLoading?: boolean;
 }
 
-interface ViewProps {
-  columns: ColumnDef<TaskWithProject>[];
-  data: TaskWithProject[] | undefined;
-  isLoading?: boolean;
-}
-
-export function TaskView({ columns, data, isLoading }: ViewProps) {
-  if (isLoading || !data) {
-    return <ActivityViewSkeleton columns={columns} />;
-  }
-
-  return <View data={data} columns={columns} />;
-}
-
-function View({ columns, data }: Props) {
+export function TaskView({ columns, data, isLoading }: Props) {
   const { data: projects } = api.project.getAll.useQuery();
   const { showDialog } = useDialog();
 
@@ -84,13 +70,12 @@ function View({ columns, data }: Props) {
     },
   });
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedIds = selectedRows.map((row) => row.original.id);
-
   const updateManyTaskMutation = useUpdateManyTasksMutation();
   const delteMutation = useDeleteManyTasks();
 
-  const getCommonProject = () => {
+  const selectedIds = getSelectedIdsFromState(table.getState().rowSelection);
+
+  const getCommonProject = (selectedRows: Row<TaskWithProject>[]) => {
     if (selectedRows.length === 0) return null;
     const first = selectedRows[0]?.original.projectId;
     if (!first) return null;
@@ -120,7 +105,7 @@ function View({ columns, data }: Props) {
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0">
                 <SelectCreate
-                  value={getCommonProject()}
+                  value={getCommonProject(table.getSelectedRowModel().rows)}
                   multi={false}
                   options={
                     projects?.map((p) => ({
@@ -183,6 +168,7 @@ function View({ columns, data }: Props) {
       <DataTable
         table={table}
         onRowClick={(task) => showDialog(<UpdateTaskDialog task={task} />)}
+        isLoading={isLoading}
       />
     </div>
   );

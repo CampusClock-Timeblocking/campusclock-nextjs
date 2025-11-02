@@ -5,6 +5,7 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type Row,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
@@ -12,7 +13,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Boxes, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "../data-table";
+import { DataTable, getSelectedIdsFromState } from "../data-table";
 import SelectCreate from "@/components/select-create";
 import { useDialog } from "@/providers/dialog-provider";
 import {
@@ -31,7 +32,6 @@ import {
   useUpdateManyProjectsMutation,
 } from "@/hooks/mutations/project";
 import type { ProjectWithParent } from "../columns/project-columns";
-import { ActivityViewSkeleton } from "./activities-skeleton";
 import { ColumnVisibility } from "../column-visibility";
 
 interface Props {
@@ -40,21 +40,7 @@ interface Props {
   isLoading?: boolean;
 }
 
-interface ViewProps {
-  columns: ColumnDef<ProjectWithParent>[];
-  data: ProjectWithParent[] | undefined;
-  isLoading?: boolean;
-}
-
-export function ProjectView({ columns, data, isLoading }: ViewProps) {
-  if (isLoading || !data) {
-    return <ActivityViewSkeleton columns={columns} />;
-  }
-
-  return <View data={data} columns={columns} />;
-}
-
-function View({ columns, data }: Props) {
+export function ProjectView({ columns, data, isLoading }: Props) {
   const { showDialog } = useDialog();
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -81,13 +67,12 @@ function View({ columns, data }: Props) {
     },
   });
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedIds = selectedRows.map((row) => row.original.id);
+  const selectedIds = getSelectedIdsFromState(table.getState().rowSelection);
 
   const delteMutation = useDelteManyProjectMutation();
   const updateMany = useUpdateManyProjectsMutation();
 
-  const getCommonProject = () => {
+  const getCommonProject = (selectedRows: Row<ProjectWithParent>[]) => {
     if (selectedRows.length === 0) return null;
     const first = selectedRows[0]?.original.parentId;
     if (!first) return null;
@@ -117,7 +102,7 @@ function View({ columns, data }: Props) {
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0">
                 <SelectCreate
-                  value={getCommonProject()}
+                  value={getCommonProject(table.getSelectedRowModel().rows)}
                   multi={false}
                   options={data.map((p) => ({
                     label: p.title,
@@ -178,6 +163,7 @@ function View({ columns, data }: Props) {
         onRowClick={(project) =>
           showDialog(<UpdateProjectDialog project={project} />)
         }
+        isLoading={isLoading}
       />
     </div>
   );

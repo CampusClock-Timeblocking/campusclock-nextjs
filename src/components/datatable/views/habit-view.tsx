@@ -5,6 +5,7 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type Row,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
@@ -13,7 +14,7 @@ import type { Habit } from "@prisma/client";
 import { Input } from "@/components/ui/input";
 import { Power, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "../data-table";
+import { DataTable, getSelectedIdsFromState } from "../data-table";
 import { useDialog } from "@/providers/dialog-provider";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { AsyncButton } from "@/components/basic-components/async-action-button";
@@ -22,7 +23,6 @@ import {
   useUpdateManyHabitsMutations,
 } from "@/hooks/mutations/habit";
 import { UpdateHabitDialog } from "@/components/item-dialogs/dialogs/habit";
-import { ActivityViewSkeleton } from "./activities-skeleton";
 import { ColumnVisibility } from "../column-visibility";
 
 interface Props {
@@ -31,21 +31,7 @@ interface Props {
   isLoading?: boolean;
 }
 
-interface ViewProps {
-  columns: ColumnDef<Habit>[];
-  data: Habit[] | undefined;
-  isLoading?: boolean;
-}
-
-export function HabitView({ columns, data, isLoading }: ViewProps) {
-  if (isLoading || !data) {
-    return <ActivityViewSkeleton columns={columns} />;
-  }
-
-  return <View data={data} columns={columns} />;
-}
-
-function View({ columns, data }: Props) {
+export function HabitView({ columns, data, isLoading }: Props) {
   const { showDialog } = useDialog();
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -72,13 +58,12 @@ function View({ columns, data }: Props) {
     },
   });
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedIds = selectedRows.map((row) => row.original.id);
+  const selectedIds = getSelectedIdsFromState(table.getState().rowSelection);
 
   const deleteMutation = useDeleteManyHabits();
 
   const updateManyActiveStatus = useUpdateManyHabitsMutations();
-  const getCommonActiveStatus = () => {
+  const getCommonActiveStatus = (selectedRows: Row<Habit>[]) => {
     if (selectedRows.length === 0) return null;
     const first = selectedRows[0]?.original.active;
     const allSame = selectedRows.every((r) => r.original.active === first);
@@ -86,7 +71,9 @@ function View({ columns, data }: Props) {
   };
 
   const toggleActiveStatus = () => {
-    const commonStatus = getCommonActiveStatus();
+    const commonStatus = getCommonActiveStatus(
+      table.getSelectedRowModel().rows,
+    );
     const newStatus = commonStatus === null ? true : !commonStatus;
 
     updateManyActiveStatus.mutate({
@@ -110,7 +97,9 @@ function View({ columns, data }: Props) {
             </Button>
             <Button size="sm" variant="outline" onClick={toggleActiveStatus}>
               <Power />
-              {getCommonActiveStatus() === true ? "Deactivate" : "Activate"}
+              {getCommonActiveStatus(table.getSelectedRowModel().rows) === true
+                ? "Deactivate"
+                : "Activate"}
             </Button>
             <AsyncButton
               size="sm"
@@ -138,6 +127,7 @@ function View({ columns, data }: Props) {
       <DataTable
         table={table}
         onRowClick={(habit) => showDialog(<UpdateHabitDialog habit={habit} />)}
+        isLoading={isLoading}
       />
     </div>
   );
