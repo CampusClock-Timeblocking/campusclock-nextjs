@@ -142,7 +142,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       return (
         <div className="flex gap-1">
           {dayLabels.map((d) => (
-            <Badge variant="outline" className="rounded-full text-xs">
+            <Badge key={d} variant="outline" className="rounded-full text-xs">
               {d}
             </Badge>
           ))}
