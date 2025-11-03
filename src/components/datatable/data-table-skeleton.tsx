@@ -18,6 +18,6 @@ export function DataTableSkeleton<T>({ columns, skeletonRows = 10 }: Props<T>) {
     getCoreRowModel: getCoreRowModel(),
   });
   return (
-    <DataTable table={table} isLoading={true} loadingRows={skeletonRows} />
+    <DataTable table={table} isLoading={true} skeletonRows={skeletonRows} />
   );
 }

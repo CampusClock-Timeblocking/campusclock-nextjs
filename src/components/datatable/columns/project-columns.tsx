@@ -10,12 +10,12 @@ import {
   CircleDashed,
   CircleOff,
   Loader,
-  Megaphone,
   OctagonAlert,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PriorityBadge } from "./components";
 import { Skeleton } from "@/components/ui/skeleton";
+import { seededRandom } from "@/lib/utils";
 
 export type ProjectWithParent = Project & {
   parent?: {
@@ -47,7 +47,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
     enableSorting: false,
     enableHiding: false,
     meta: {
-      skeleton: <Skeleton className="h-4 w-4 rounded" />,
+      skeleton: () => <Skeleton className="h-4 w-4 rounded" />,
     },
   },
   {
@@ -59,7 +59,11 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
       <div className="font-medium">{row.getValue("title")}</div>
     ),
     meta: {
-      skeleton: <Skeleton className="h-4 w-full max-w-[160px]" />,
+      skeleton: (rowIndex) => {
+        const random = seededRandom(rowIndex * 9973);
+        const width = Math.floor(random() * 60) + 100;
+        return <Skeleton className="h-4" style={{ width: `${width}px` }} />;
+      },
     },
   },
   {
@@ -84,7 +88,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-[22px] w-20 rounded-full" />,
+      skeleton: () => <Skeleton className="h-[22px] w-20 rounded-full" />,
     },
   },
   {
@@ -96,7 +100,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
     ),
     cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
     meta: {
-      skeleton: <Skeleton className="h-[22px] w-[22px] rounded-full" />,
+      skeleton: () => <Skeleton className="h-[22px] w-[22px] rounded-full" />,
     },
   },
   {
@@ -113,7 +117,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-24" />,
+      skeleton: () => <Skeleton className="h-4 w-24" />,
     },
   },
   {
@@ -130,7 +134,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-24" />,
+      skeleton: () => <Skeleton className="h-4 w-24" />,
     },
   },
   {
@@ -144,7 +148,11 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
       return <div className="text-sm">{parent || "-"}</div>;
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-24" />,
+      skeleton: (rowIndex) => {
+        const random = seededRandom(rowIndex * 6348);
+        const width = Math.floor(random() * 30) + 90;
+        return <Skeleton className="h-4" style={{ width: `${width}px` }} />;
+      },
     },
   },
 ];

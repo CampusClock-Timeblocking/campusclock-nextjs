@@ -5,17 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { type Habit, PeriodUnit } from "@prisma/client";
 import { format } from "date-fns";
 import { SortableHeader } from "../sortable-header-button";
-import {
-  AlertOctagon,
-  CalendarSync,
-  Moon,
-  Power,
-  Repeat,
-  Sun,
-  Timer,
-} from "lucide-react";
-import { cn, formatDuration } from "@/lib/utils";
-import { B, P } from "node_modules/@upstash/redis/zmscore-Cq_Bzgy4.mjs";
+import { AlertOctagon, Power, Repeat, Timer } from "lucide-react";
+import { cn, formatDuration, seededRandom } from "@/lib/utils";
 import { PriorityBadge } from "./components";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,7 +35,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
     enableSorting: false,
     enableHiding: false,
     meta: {
-      skeleton: <Skeleton className="h-4 w-4 rounded" />,
+      skeleton: () => <Skeleton className="h-4 w-4 rounded" />,
     },
   },
   {
@@ -56,7 +47,11 @@ export const habitColumns: ColumnDef<Habit>[] = [
       <div className="font-medium">{row.getValue("title")}</div>
     ),
     meta: {
-      skeleton: <Skeleton className="h-4 w-full max-w-[200px]" />,
+      skeleton: (rowIndex) => {
+        const random = seededRandom(rowIndex * 9973);
+        const width = Math.floor(random() * 60) + 100;
+        return <Skeleton className="h-4" style={{ width: `${width}px` }} />;
+      },
     },
   },
   {
@@ -79,7 +74,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-6 w-16 rounded-full" />,
+      skeleton: () => <Skeleton className="h-6 w-16 rounded-full" />,
     },
   },
   {
@@ -111,7 +106,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-14" />,
+      skeleton: () => <Skeleton className="h-4 w-14" />,
     },
   },
   {
@@ -124,7 +119,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       return <div className="text-sm">{times}x</div>;
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-8" />,
+      skeleton: () => <Skeleton className="h-4 w-8" />,
     },
   },
   {
@@ -150,13 +145,17 @@ export const habitColumns: ColumnDef<Habit>[] = [
       );
     },
     meta: {
-      skeleton: (
-        <div className="flex gap-1">
-          <Skeleton className="h-[22px] w-8 rounded-full" />
-          <Skeleton className="h-[22px] w-8 rounded-full" />
-          <Skeleton className="h-[22px] w-8 rounded-full" />
-        </div>
-      ),
+      skeleton: (rowIndex) => {
+        const random = seededRandom(rowIndex * 3119);
+        const count = Math.floor(random() * 5);
+        return (
+          <div className="flex gap-1">
+            {Array.from({ length: count }).map((_, i) => (
+              <Skeleton key={i} className="h-[22px] w-8 rounded-full" />
+            ))}
+          </div>
+        );
+      },
     },
   },
   {
@@ -173,7 +172,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-12" />,
+      skeleton: () => <Skeleton className="h-4 w-12" />,
     },
   },
   {
@@ -191,7 +190,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       </div>
     ),
     meta: {
-      skeleton: <Skeleton className="h-4 w-12" />,
+      skeleton: () => <Skeleton className="h-4 w-12" />,
     },
   },
   {
@@ -203,7 +202,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
     ),
     cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
     meta: {
-      skeleton: <Skeleton className="h-[22px] w-[22px] rounded-full" />,
+      skeleton: () => <Skeleton className="h-[22px] w-[22px] rounded-full" />,
     },
   },
 ];

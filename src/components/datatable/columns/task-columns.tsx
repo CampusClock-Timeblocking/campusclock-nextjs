@@ -3,14 +3,10 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Boxes,
-  CalendarClock,
-  CaseSensitive,
   CircleCheck,
   CircleDashed,
   CircleOff,
   Loader,
-  Megaphone,
   OctagonAlert,
   Pause,
   RedoDot,
@@ -19,9 +15,8 @@ import {
 } from "lucide-react";
 import { type Task, TaskStatus } from "@prisma/client";
 import { format } from "date-fns";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, seededRandom } from "@/lib/utils";
 import { SortableHeader } from "../sortable-header-button";
-import { ca } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { PriorityBadge } from "./components";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +51,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     enableSorting: false,
     enableHiding: false,
     meta: {
-      skeleton: <Skeleton className="h-4 w-4 rounded" />,
+      skeleton: () => <Skeleton className="h-4 w-4 rounded" />,
     },
   },
   {
@@ -66,7 +61,11 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     ),
     cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
     meta: {
-      skeleton: <Skeleton className="h-4 w-full max-w-[160px]" />,
+      skeleton: (rowIndex) => {
+        const random = seededRandom(rowIndex * 9973);
+        const width = Math.floor(random() * 60) + 100;
+        return <Skeleton className="h-4" style={{ width: `${width}px` }} />;
+      },
     },
   },
   {
@@ -91,7 +90,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-[22px] w-20 rounded-full" />,
+      skeleton: () => <Skeleton className="h-[22px] w-20 rounded-full" />,
     },
   },
   {
@@ -103,7 +102,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     ),
     cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
     meta: {
-      skeleton: <Skeleton className="h-[22px] w-[22px] rounded-full" />,
+      skeleton: () => <Skeleton className="h-[22px] w-[22px] rounded-full" />,
     },
   },
   {
@@ -120,7 +119,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
       );
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-24" />,
+      skeleton: () => <Skeleton className="h-4 w-24" />,
     },
   },
   {
@@ -134,7 +133,11 @@ export const columns: ColumnDef<TaskWithProject>[] = [
       return <div className="text-sm">{project || "-"}</div>;
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-28" />,
+      skeleton: (rowIndex) => {
+        const random = seededRandom(rowIndex * 5783);
+        const width = Math.floor(random() * 45) + 80;
+        return <Skeleton className="h-4" style={{ width: `${width}px` }} />;
+      },
     },
   },
   {
@@ -147,7 +150,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
       return <div className="text-sm">{scheduledTime || "-"}</div>;
     },
     meta: {
-      skeleton: <Skeleton className="h-4 w-24" />,
+      skeleton: () => <Skeleton className="h-4 w-24" />,
     },
   },
   {
@@ -165,7 +168,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
       </div>
     ),
     meta: {
-      skeleton: <Skeleton className="h-4 w-12" />,
+      skeleton: () => <Skeleton className="h-4 w-12" />,
     },
   },
 ];

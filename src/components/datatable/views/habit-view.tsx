@@ -128,6 +128,7 @@ export function HabitView({ columns, data, isLoading }: Props) {
         table={table}
         onRowClick={(habit) => showDialog(<UpdateHabitDialog habit={habit} />)}
         isLoading={isLoading}
+        skeletonRows={7}
       />
     </div>
   );

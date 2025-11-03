@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 import { Skeleton } from "../ui/skeleton";
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
-    skeleton?: ReactNode;
+    skeleton?: (index: number) => ReactNode;
   }
 }
 
@@ -25,14 +25,14 @@ interface DataTableProps<TData> {
   table: TableState<TData>;
   onRowClick?: (row: TData) => void;
   isLoading?: boolean;
-  loadingRows?: number;
+  skeletonRows?: number;
 }
 
 export function DataTable<TData>({
   table,
   onRowClick,
   isLoading = false,
-  loadingRows = 10,
+  skeletonRows = 10,
 }: DataTableProps<TData>) {
   const defaultSkeleton = <Skeleton className="h-4 w-full max-w-[200px]" />;
 
@@ -59,11 +59,12 @@ export function DataTable<TData>({
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            Array.from({ length: loadingRows }).map((_, rowIndex) => (
+            Array.from({ length: skeletonRows }).map((_, rowIndex) => (
               <TableRow key={`skeleton-${rowIndex}`}>
                 {table.getVisibleFlatColumns().map((column) => (
                   <TableCell key={column.id}>
-                    {column.columnDef.meta?.skeleton ?? defaultSkeleton}
+                    {column.columnDef.meta?.skeleton?.(rowIndex) ??
+                      defaultSkeleton}
                   </TableCell>
                 ))}
               </TableRow>

@@ -164,6 +164,7 @@ export function ProjectView({ columns, data, isLoading }: Props) {
           showDialog(<UpdateProjectDialog project={project} />)
         }
         isLoading={isLoading}
+        skeletonRows={10}
       />
     </div>
   );

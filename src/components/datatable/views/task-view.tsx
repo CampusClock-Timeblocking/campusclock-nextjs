@@ -169,6 +169,7 @@ export function TaskView({ columns, data, isLoading }: Props) {
         table={table}
         onRowClick={(task) => showDialog(<UpdateTaskDialog task={task} />)}
         isLoading={isLoading}
+        skeletonRows={25}
       />
     </div>
   );
