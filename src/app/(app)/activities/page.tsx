@@ -17,7 +17,7 @@ import { useMemo, useCallback } from "react";
 import { useActiveTab } from "@/components/basic-components/tabs-row";
 import type { TabOption } from "@/components/basic-components/tabs-row";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { useOptionSpace } from "@/hooks/kbd";
+import { useOptionKey } from "@/hooks/kbd";
 
 export default function TasksPage() {
   const { data: tasks, isLoading: tasksLoading } = api.task.getAll.useQuery();
@@ -87,7 +87,7 @@ export default function TasksPage() {
 
   const activeTab = useActiveTab(tabs, "tasks");
 
-  useOptionSpace(activeTab?.action?.action);
+  useOptionKey("Space", activeTab?.action?.action);
 
   return (
     <TitlePage

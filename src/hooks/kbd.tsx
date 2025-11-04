@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 
-export function useEventListener<K extends keyof DocumentEventMap>(
+export function useDocumentEventListener<K extends keyof DocumentEventMap>(
   type: K,
   callback: (event: DocumentEventMap[K]) => void,
 ) {
@@ -9,6 +9,19 @@ export function useEventListener<K extends keyof DocumentEventMap>(
 
     return () => {
       document.removeEventListener(type, callback);
+    };
+  }, [type, callback]);
+}
+
+export function useWindowEventListener<K extends keyof WindowEventMap>(
+  type: K,
+  callback: (event: WindowEventMap[K]) => void,
+) {
+  useEffect(() => {
+    window.addEventListener(type, callback);
+
+    return () => {
+      window.removeEventListener(type, callback);
     };
   }, [type, callback]);
 }
@@ -24,16 +37,18 @@ export function useShiftEnter(action?: () => void) {
     [action],
   );
 
-  useEventListener("keydown", handleKeyDown);
+  useDocumentEventListener("keydown", handleKeyDown);
 }
 
-export function useOptionSpace(action?: () => void) {
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.altKey && event.code === "Space") {
-      event.preventDefault();
-      action?.();
-    }
-  };
-
-  useEventListener("keydown", handleKeyDown);
+export function useOptionKey(code: string, action?: () => void) {
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.altKey && event.code === code) {
+        event.preventDefault();
+        action?.();
+      }
+    },
+    [code, action],
+  );
+  useDocumentEventListener("keydown", handleKeyDown);
 }

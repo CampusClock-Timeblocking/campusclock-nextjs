@@ -15,9 +15,13 @@ import {
   subWeeks,
 } from "date-fns";
 import {
+  Boxes,
+  CalendarFold,
+  CalendarSync,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  List,
   PlusIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +50,12 @@ import { MonthView } from "./month-view";
 import { EventDialog } from "./event-dialog";
 import { addHoursToDate } from "./utils";
 import { useCalendarContext } from "./calendar-context";
+import { useDialog } from "@/providers/dialog-provider";
+import { CreateTaskDialog } from "../item-dialogs/dialogs/task";
+import { CreateProjectDialog } from "../item-dialogs/dialogs/project";
+import { CreateHabitDialog } from "../item-dialogs/dialogs/habit";
+import { Kbd, KbdGroup } from "../ui/kbd";
+import { useOptionKey } from "@/hooks/kbd";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -79,6 +89,26 @@ export function EventCalendar({
       calendars?.filter((cal) => cal.readOnly).map((cal) => cal.id) ?? [],
     );
   }, [calendars]);
+
+  const [createNewOpen, setCreateNewOpen] = useState(false);
+
+  const { showDialog } = useDialog();
+
+  useOptionKey("Space", () => setCreateNewOpen(true));
+
+  useOptionKey("KeyE", () => {
+    setSelectedEvent(null);
+    setIsEventDialogOpen(true);
+  });
+  useOptionKey("KeyT", () => {
+    showDialog(<CreateTaskDialog />);
+  });
+  useOptionKey("KeyP", () => {
+    showDialog(<CreateProjectDialog />);
+  });
+  useOptionKey("KeyH", () => {
+    showDialog(<CreateHabitDialog />);
+  });
 
   // Add keyboard shortcuts for view switching
   useEffect(() => {
@@ -367,21 +397,59 @@ export function EventCalendar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              className="max-[479px]:aspect-square max-[479px]:p-0!"
-              size="sm"
-              onClick={() => {
-                setSelectedEvent(null); // Ensure we're creating a new event
-                setIsEventDialogOpen(true);
-              }}
-            >
-              <PlusIcon
-                className="opacity-60 sm:-ms-1"
-                size={16}
-                aria-hidden="true"
-              />
-              <span className="max-sm:sr-only">New event</span>
-            </Button>
+            <DropdownMenu open={createNewOpen} onOpenChange={setCreateNewOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button className="gap-1.5 max-[479px]:h-8">
+                  <PlusIcon
+                    className="opacity-60 sm:-ms-1"
+                    size={16}
+                    aria-hidden="true"
+                  />
+                  New
+                  <KbdGroup>
+                    <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                      ⌥
+                    </Kbd>
+                    <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
+                      space
+                    </Kbd>
+                  </KbdGroup>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-32">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedEvent(null); // Ensure we're creating a new event
+                    setIsEventDialogOpen(true);
+                  }}
+                >
+                  <CalendarFold />
+                  Event
+                  <DropdownMenuShortcut>⌥E</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => showDialog(<CreateTaskDialog />)}
+                >
+                  <List />
+                  Task
+                  <DropdownMenuShortcut>⌥T</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => showDialog(<CreateProjectDialog />)}
+                >
+                  <Boxes />
+                  Project
+                  <DropdownMenuShortcut>⌥P</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => showDialog(<CreateHabitDialog />)}
+                >
+                  <CalendarSync />
+                  Habit
+                  <DropdownMenuShortcut>⌥H</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
