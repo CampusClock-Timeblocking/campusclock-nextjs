@@ -29,6 +29,7 @@ export class GCalService {
     }
 
     for (const calendar of calendars) {
+      console.log(calendar);
       await this.db.calendar.upsert({
         where: {
           userId_provider_externalId: {
@@ -42,8 +43,6 @@ export class GCalService {
           backgroundColor: calendar.backgroundColor ?? "#000000",
           foregroundColor: calendar.foregroundColor ?? "#000000",
           type: CalendarType.EXTERNAL,
-          provider: CalendarProvider.GOOGLE,
-          externalId: calendar.id,
           readOnly: true,
         },
         create: {

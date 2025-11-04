@@ -188,7 +188,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className={cn(
-            "w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden border-none",
+            "bg-sidebar text-sidebar-foreground w-(--sidebar-width) border-none p-0 [&>button]:hidden",
             className,
           )}
           style={
@@ -264,7 +264,7 @@ function SidebarTrigger({
 }: React.ComponentProps<typeof Button> & {
   isOutsideSidebar?: boolean;
 }) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open } = useSidebar();
 
   return (
     <Button
@@ -279,11 +279,10 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      {!isOutsideSidebar ? (
-        <RiSkipLeftLine className="size-5" size={20} />
-      ) : (
-        <RiLayoutLeft2Line className="size-5" size={20} />
-      )}
+      <RiSkipLeftLine
+        className={cn("size-5 transition-all", !open && "rotate-180")}
+        size={20}
+      />
       <span className="sr-only">
         {isOutsideSidebar ? "Collapse sidebar" : "Expand sidebar"}
       </span>

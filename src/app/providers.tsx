@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { ConfirmationDialogProvider } from "@/providers/confirmation-dialog-provider";
+import { DialogProvider } from "@/providers/dialog-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -37,7 +38,9 @@ export function Providers({ children }: { children: ReactNode }) {
         }}
       >
         <ConfirmationDialogProvider>
-          <CalendarProvider>{children}</CalendarProvider>
+          <CalendarProvider>
+            <DialogProvider>{children}</DialogProvider>
+          </CalendarProvider>
           <Toaster />
         </ConfirmationDialogProvider>
       </AuthUIProvider>
