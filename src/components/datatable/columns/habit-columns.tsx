@@ -43,9 +43,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
     header: ({ column }) => (
       <SortableHeader column={column}>Name</SortableHeader>
     ),
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("title")}</div>
-    ),
+    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
     meta: {
       skeleton: (rowIndex) => {
         const random = seededRandom(rowIndex * 9973);
@@ -115,7 +113,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       <SortableHeader column={column}>Times/Period</SortableHeader>
     ),
     cell: ({ row }) => {
-      const times = row.getValue("timesPerPeriod") as number;
+      const times = row.original.timesPerPeriod;
       return <div className="text-sm">{times}x</div>;
     },
     meta: {
@@ -126,7 +124,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
     accessorKey: "byWeekdays",
     header: "Weekdays",
     cell: ({ row }) => {
-      const weekdays = row.getValue("byWeekdays") as number[];
+      const weekdays = row.original.byWeekdays;
       if (!weekdays || weekdays.length === 0)
         return <div className="text-sm">-</div>;
 
@@ -164,7 +162,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
       <SortableHeader column={column}>Preferred Time</SortableHeader>
     ),
     cell: ({ row }) => {
-      const preferredTime = row.getValue("preferredTime") as Date | null;
+      const preferredTime = row.original.preferredTime;
       return (
         <div className="text-sm">
           {preferredTime ? format(new Date(preferredTime), "HH:mm") : "-"}

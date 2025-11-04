@@ -13,12 +13,12 @@ export function useEventListener<K extends keyof DocumentEventMap>(
   }, [type, callback]);
 }
 
-export function useShiftEnter(action: () => void) {
+export function useShiftEnter(action?: () => void) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.shiftKey && event.key === "Enter") {
         event.preventDefault();
-        action();
+        action?.();
       }
     },
     [action],
@@ -27,17 +27,13 @@ export function useShiftEnter(action: () => void) {
   useEventListener("keydown", handleKeyDown);
 }
 
-export function useCommandN(action: () => void) {
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      // Use metaKey for Command on Mac, ctrlKey for Windows/Linux
-      if ((event.metaKey || event.ctrlKey) && event.key === "n") {
-        event.preventDefault();
-        action();
-      }
-    },
-    [action],
-  );
+export function useOptionSpace(action?: () => void) {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.altKey && event.code === "Space") {
+      event.preventDefault();
+      action?.();
+    }
+  };
 
   useEventListener("keydown", handleKeyDown);
 }

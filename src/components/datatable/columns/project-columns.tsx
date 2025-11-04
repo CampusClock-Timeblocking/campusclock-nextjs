@@ -55,9 +55,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
     header: ({ column }) => (
       <SortableHeader column={column}>Name</SortableHeader>
     ),
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("title")}</div>
-    ),
+    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
     meta: {
       skeleton: (rowIndex) => {
         const random = seededRandom(rowIndex * 9973);
