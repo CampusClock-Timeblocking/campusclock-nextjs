@@ -39,6 +39,8 @@ interface CalendarContextType {
   calendars: Calendar[] | undefined;
 
   events: Omit<Event, "calendar" | "task">[] | undefined;
+  startDate: Date;
+  endDate: Date;
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(
@@ -189,6 +191,8 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
     toggleCalendarVisibility,
     view,
     setView,
+    startDate,
+    endDate,
   };
 
   return (
