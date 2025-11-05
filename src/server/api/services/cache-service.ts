@@ -197,4 +197,18 @@ export class CacheService {
   static generateUserEventPattern(userId: string): string {
     return `event:${userId}:*`;
   }
+
+  /**
+   * Flush all keys from the cache
+   * WARNING: This will delete ALL data in the Redis instance
+   * Should only be used in development
+   */
+  async flushAll(): Promise<void> {
+    try {
+      await this.redis.flushdb();
+    } catch (error) {
+      console.error("Cache flush all error:", error);
+      throw error;
+    }
+  }
 }

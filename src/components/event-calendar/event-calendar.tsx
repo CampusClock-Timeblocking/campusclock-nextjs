@@ -23,6 +23,7 @@ import {
   ChevronRightIcon,
   List,
   PlusIcon,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +36,11 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { type CalendarEvent, type CalendarView } from "./types";
 import {
   AgendaDaysToShow,
@@ -56,6 +62,7 @@ import { CreateProjectDialog } from "../item-dialogs/dialogs/project";
 import { CreateHabitDialog } from "../item-dialogs/dialogs/habit";
 import { Kbd, KbdGroup } from "../ui/kbd";
 import { useOptionKey } from "@/hooks/kbd";
+import { ScheduleButton } from "../schedule-button";
 
 export interface EventCalendarProps {
   events?: CalendarEvent[];
@@ -364,6 +371,29 @@ export function EventCalendar({
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
+                  <Zap
+                    className="opacity-60"
+                    size={16}
+                    aria-hidden="true"
+                  />
+                  <span className="max-[479px]:sr-only">Schedule</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold">Smart Scheduler</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically schedule your tasks based on priorities and working hours
+                    </p>
+                  </div>
+                  <ScheduleButton />
+                </div>
+              </PopoverContent>
+            </Popover>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1.5 max-[479px]:h-8">

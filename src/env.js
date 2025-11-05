@@ -20,6 +20,9 @@ export const env = createEnv({
     KV_REST_API_TOKEN: z.string(),
     KV_REST_API_READ_ONLY_TOKEN: z.string(),
     REDIS_URL: z.string(),
+    // Scheduler solver service
+    SOLVER_SERVICE_URL: z.string().url().default("http://localhost:8000"),
+    SOLVER_TIMEOUT_MS: z.string().default("10000"),
   },
 
   /**
@@ -47,10 +50,8 @@ export const env = createEnv({
     KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
     KV_REST_API_READ_ONLY_TOKEN: process.env.KV_REST_API_READ_ONLY_TOKEN,
     REDIS_URL: process.env.REDIS_URL,
-    // Add more server-side env vars here if needed
-    // e.g. NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
-    // Note: Only add client-side env vars here that are prefixed with `NEXT_PUBLIC_`
-    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    SOLVER_SERVICE_URL: process.env.SOLVER_SERVICE_URL,
+    SOLVER_TIMEOUT_MS: process.env.SOLVER_TIMEOUT_MS,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
