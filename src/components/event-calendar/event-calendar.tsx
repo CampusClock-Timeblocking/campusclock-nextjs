@@ -228,7 +228,7 @@ export function EventCalendar({
       // Show toast notification when an event is updated
       toast(`Event "${event.title}" updated`, {
         description: format(new Date(event.start), "MMM d, yyyy"),
-        position: "bottom-left",
+        position: "bottom-right",
       });
     } else {
       onEventAdd?.({
@@ -238,7 +238,7 @@ export function EventCalendar({
       // Show toast notification when an event is added
       toast(`Event "${event.title}" added`, {
         description: format(new Date(event.start), "MMM d, yyyy"),
-        position: "bottom-left",
+        position: "bottom-right",
       });
     }
     setIsEventDialogOpen(false);
@@ -255,7 +255,7 @@ export function EventCalendar({
     if (deletedEvent) {
       toast(`Event "${deletedEvent.title}" deleted`, {
         description: format(new Date(deletedEvent.start), "MMM d, yyyy"),
-        position: "bottom-left",
+        position: "bottom-right",
       });
     }
   };
@@ -266,7 +266,7 @@ export function EventCalendar({
     // Show toast notification when an event is updated via drag and drop
     toast(`Event "${updatedEvent.title}" moved`, {
       description: format(new Date(updatedEvent.start), "MMM d, yyyy"),
-      position: "bottom-left",
+      position: "bottom-right",
     });
   };
 
