@@ -50,9 +50,8 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             {/* Replace with your real logo and set sizes */}
-            <Image src="/campusclock.png" alt="CampusClock" width={36} height={36} priority />
+            <Image src="/Icon_Gradient.svg" alt="CampusClock" width={36} height={36} priority />
             <span className="text-lg font-semibold tracking-tight">CampusClock</span>
-            <Badge variant="secondary" className="ml-2 bg-white/10 text-white">Beta</Badge>
           </div>
           <nav className="hidden items-center gap-6 md:flex">
             <Link href="#features" className="text-sm text-white/80 hover:text-white">Features</Link>
@@ -83,10 +82,10 @@ export default function Home() {
               className="text-balance text-5xl font-bold leading-tight sm:text-6xl"
             >
               Time‑blocking that actually <span className="bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] bg-clip-text text-transparent" style={{ ['--from' as string]: BRAND.from, ['--via' as string]: BRAND.via, ['--to' as string]: BRAND.to }}>sticks</span>
-            </motion.h1>
             <p className="mt-5 max-w-prose text-lg text-white/80">
               CampusClock is your scheduling copilot: plan classes, deep‑work and life in one place. Smart blocks, energy‑aware routines, and real‑time calendar sync.
             </p>
+            </motion.h1>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/onboarding/welcome"><Button className="h-14 px-8 bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white text-lg" style={{
@@ -212,7 +211,7 @@ export default function Home() {
       <footer className="border-t border-white/10 bg-black/40 py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 md:flex-row">
           <div className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="CampusClock" width={24} height={24} />
+            <Image src="/Icon_Gradient.svg" alt="CampusClock" width={24} height={24} />
             <span className="text-sm text-white/70">© {new Date().getFullYear()} CampusClock</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-white/70">
