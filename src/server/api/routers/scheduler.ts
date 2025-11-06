@@ -7,7 +7,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { SchedulerService } from "../services/scheduler-service";
-
+import { env } from "@/env";
 export const schedulerRouter = createTRPCRouter({
   /**
    * Schedule tasks for the current user
@@ -205,12 +205,12 @@ export const schedulerRouter = createTRPCRouter({
    * Check if the solver service is available
    */
   checkSolverHealth: protectedProcedure.query(async () => {
-    const solverUrl = process.env.SOLVER_SERVICE_URL ?? "http://localhost:8000";
+    const solverUrl = env.SOLVER_SERVICE_URL ?? "http://localhost:8000";
 
     try {
       const response = await fetch(`${solverUrl}/health`, {
         method: "GET",
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(10000), // Increased to 10 seconds for containerized environments
       });
 
       if (!response.ok) {
@@ -233,4 +233,3 @@ export const schedulerRouter = createTRPCRouter({
     }
   }),
 });
-
