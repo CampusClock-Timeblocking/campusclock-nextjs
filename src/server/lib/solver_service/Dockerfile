@@ -15,13 +15,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY *.py ./
 
-EXPOSE 8080
+EXPOSE 3000
 
 # Health check to ensure the service is responsive
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "from urllib.request import urlopen; urlopen('http://localhost:8080/health').read()" || exit 1
+    CMD python -c "from urllib.request import urlopen; urlopen('http://localhost:3000/health').read()" || exit 1
 
 # Run the FastAPI app - correct module path is "main:app" since main.py is in /app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
 
 
