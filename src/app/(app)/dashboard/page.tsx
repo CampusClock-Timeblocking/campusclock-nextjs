@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import BigCalendar from "@/components/big-calendar";
 
 export const metadata: Metadata = {
-  title: "Experiment 06 - Crafted.is",
+  title: "CampusClock - Der KI-Assistent für deinen Alltag ",
 };
 
 export default function Dashboard() {

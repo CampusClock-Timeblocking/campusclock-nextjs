@@ -1,6 +1,6 @@
 "use client";
 
-import type { FrontendUpdateTaskInput, UpdateTaskInput } from "@/lib/zod";
+import type { FrontendUpdateTaskInput } from "@/lib/zod";
 import { InferenceStatus } from "@/server/api/services/ai-infer-service";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";

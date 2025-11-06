@@ -120,7 +120,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     ),
     cell: ({ row }) => {
       const project = row.original.project?.title;
-      return <div className="text-sm">{project || "-"}</div>;
+      return <div className="text-sm">{project ?? "-"}</div>;
     },
     meta: {
       skeleton: (rowIndex) => {
@@ -137,7 +137,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     ),
     cell: ({ row }) => {
       const scheduledTime = row.original.scheduledTime;
-      return <div className="text-sm">{scheduledTime || "-"}</div>;
+      return <div className="text-sm">{scheduledTime ?? "-"}</div>;
     },
     meta: {
       skeleton: () => <Skeleton className="h-4 w-24" />,

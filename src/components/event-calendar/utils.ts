@@ -1,12 +1,12 @@
 import { isSameDay } from "date-fns";
 
-import type { CalendarEvent, EventColor } from "@/components/event-calendar/event-calendar";
+import type { CalendarEvent } from "./types";
 
 /**
  * Get CSS classes for event colors
  */
-export function getEventColorClasses(color?: EventColor | string): string {
-  const eventColor = color || "sky";
+export function getEventColorClasses(color?: string): string {
+  const eventColor = color ?? "sky";
 
   // Check if the color is a hex code or rgb value (custom color)
   if (eventColor.startsWith('#') || eventColor.startsWith('rgb')) {

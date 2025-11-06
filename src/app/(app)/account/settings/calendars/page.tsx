@@ -39,8 +39,6 @@ import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { CalendarFormDialog } from "@/components/calendar-form-dialog";
-import { PageWrapper } from "@/components/basic-components/page-wrapper";
-import { PageHeader } from "@/components/basic-components/page-header";
 import { SectionHeader } from "@/components/basic-components/section-header";
 import { TitlePage } from "@/components/basic-components/page-layout";
 

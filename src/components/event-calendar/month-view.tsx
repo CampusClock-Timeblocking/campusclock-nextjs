@@ -163,7 +163,10 @@ export function MonthView({
                         const eventStart = new Date(event.start);
                         const eventEnd = new Date(event.end);
                         const isFirstDay = isSameDay(day, eventStart);
-                        const isLastDay = isSameDay(day, eventEnd);
+                        // For all-day events, end date is exclusive, so the last visible day is the day before eventEnd
+                        const isLastDay = event.allDay 
+                          ? isSameDay(addDays(day, 1), eventEnd)
+                          : isSameDay(day, eventEnd);
 
                         const isHidden =
                           isMounted && visibleCount && index >= visibleCount;
@@ -249,7 +252,10 @@ export function MonthView({
                                   const eventStart = new Date(event.start);
                                   const eventEnd = new Date(event.end);
                                   const isFirstDay = isSameDay(day, eventStart);
-                                  const isLastDay = isSameDay(day, eventEnd);
+                                  // For all-day events, end date is exclusive, so the last visible day is the day before eventEnd
+                                  const isLastDay = event.allDay 
+                                    ? isSameDay(addDays(day, 1), eventEnd)
+                                    : isSameDay(day, eventEnd);
 
                                   return (
                                     <EventItem

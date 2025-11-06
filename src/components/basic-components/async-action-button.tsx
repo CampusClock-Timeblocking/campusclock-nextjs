@@ -14,7 +14,6 @@ export function AsyncButton({
   className,
   variant,
   size,
-  asChild = false,
   ...props
 }: React.ComponentProps<"button"> & Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);

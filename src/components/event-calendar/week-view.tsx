@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef } from "react";
 import {
+  addDays,
   addHours,
   areIntervalsOverlapping,
   differenceInMinutes,
@@ -56,8 +57,6 @@ export function WeekView({
   onEventSelect,
   onEventCreate,
   readOnlyCalendarIds = new Set(),
-  hoveredSlot,
-  onSlotHover,
 }: WeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -106,12 +105,21 @@ export function WeekView({
       .filter((event) => {
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
-        return days.some(
-          (day) =>
+        return days.some((day) => {
+          // For all-day events, the end date is exclusive
+          if (event.allDay) {
+            return (
+              isSameDay(day, eventStart) ||
+              (day > eventStart && day < eventEnd)
+            );
+          }
+          // For timed multi-day events, include the end day
+          return (
             isSameDay(day, eventStart) ||
             isSameDay(day, eventEnd) ||
-            (day > eventStart && day < eventEnd),
-        );
+            (day > eventStart && day < eventEnd)
+          );
+        });
       });
   }, [events, days]);
 
@@ -274,10 +282,18 @@ export function WeekView({
               const dayAllDayEvents = allDayEvents.filter((event) => {
                 const eventStart = new Date(event.start);
                 const eventEnd = new Date(event.end);
+                // For all-day events, the end date is exclusive
+                if (event.allDay) {
+                  return (
+                    isSameDay(day, eventStart) ||
+                    (day > eventStart && day < eventEnd)
+                  );
+                }
+                // For timed multi-day events, include the end day
                 return (
                   isSameDay(day, eventStart) ||
-                  (day > eventStart && day < eventEnd) ||
-                  isSameDay(day, eventEnd)
+                  isSameDay(day, eventEnd) ||
+                  (day > eventStart && day < eventEnd)
                 );
               });
 
@@ -291,7 +307,10 @@ export function WeekView({
                     const eventStart = new Date(event.start);
                     const eventEnd = new Date(event.end);
                     const isFirstDay = isSameDay(day, eventStart);
-                    const isLastDay = isSameDay(day, eventEnd);
+                    // For all-day events, end date is exclusive, so the last visible day is the day before eventEnd
+                    const isLastDay = event.allDay 
+                      ? isSameDay(addDays(day, 1), eventEnd)
+                      : isSameDay(day, eventEnd);
 
                     // Check if this is the first day in the current week view
                     const isFirstVisibleDay =

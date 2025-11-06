@@ -4,7 +4,7 @@ import { z } from "zod";
 export const preferencesRouter = createTRPCRouter({
   get: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    return ctx.db.userPreferences.findUnique({
+    return ctx.db.workingPreferences.findUnique({
       where: { userId },
     });
   }),
@@ -24,7 +24,7 @@ export const preferencesRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      return ctx.db.userPreferences.upsert({
+      return ctx.db.workingPreferences.upsert({
         where: { userId },
         update: input,
         create: { ...input, userId },

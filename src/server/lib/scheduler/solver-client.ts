@@ -55,8 +55,8 @@ export class SolverClient {
 async function safeJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
-  } catch (_) {
+  } catch (error) {
+    console.error(error);
     return undefined;
   }
 }
-

@@ -81,13 +81,13 @@ export function useActiveTab(tabs: TabOption[], defaultTab?: string) {
   const { params } = useSearchParamsHelper();
 
   const activeTabLabel =
-    params.get("tab") ?? (defaultTab || tabs[0]?.label.toLowerCase() || "");
+    params.get("tab") ?? (defaultTab ?? tabs[0]?.label.toLowerCase() ?? "");
 
   const activeTab = useMemo(
     () =>
       tabs.find(
         (t) => t.label.toLowerCase() === activeTabLabel.toLowerCase(),
-      ) || tabs[0],
+      ) ?? tabs[0],
     [tabs, activeTabLabel],
   );
 

@@ -1,6 +1,6 @@
 // contexts/DialogContext.tsx
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 
 interface DialogContextType {
   showDialog: (content: ReactNode) => void;

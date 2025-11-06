@@ -143,7 +143,7 @@ export const columns: ColumnDef<ProjectWithParent>[] = [
     ),
     cell: ({ row }) => {
       const parent = row.original.parent?.title;
-      return <div className="text-sm">{parent || "-"}</div>;
+      return <div className="text-sm">{parent ?? "-"}</div>;
     },
     meta: {
       skeleton: (rowIndex) => {

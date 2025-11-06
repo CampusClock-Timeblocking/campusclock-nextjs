@@ -79,7 +79,7 @@ export const ProjectDialogContent: React.FC<Props> = ({
     });
   });
 
-  useShiftEnter(handleFormSubmit);
+  useShiftEnter(() => void handleFormSubmit());
 
   return (
     <DialogContentLayout

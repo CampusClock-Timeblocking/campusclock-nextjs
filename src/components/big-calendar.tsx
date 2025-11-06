@@ -1,9 +1,4 @@
 "use client";
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import { useMemo } from "react";
 
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
@@ -81,7 +76,6 @@ export default function Component() {
       onEventAdd={handleEventAdd}
       onEventUpdate={handleEventUpdate}
       onEventDelete={handleEventDelete}
-      initialView="week"
     />
   );
 }
