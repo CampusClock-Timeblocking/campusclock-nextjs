@@ -21,7 +21,7 @@ export const env = createEnv({
     KV_REST_API_READ_ONLY_TOKEN: z.string(),
     REDIS_URL: z.string(),
     // Scheduler solver service
-    SOLVER_SERVICE_URL: z.string().url().default("http://localhost:8000"),
+    SOLVER_SERVICE_URL: z.url(),
     SOLVER_TIMEOUT_MS: z.string().default("10000"),
     OPENAI_API_KEY: z.string().optional(),
   },
