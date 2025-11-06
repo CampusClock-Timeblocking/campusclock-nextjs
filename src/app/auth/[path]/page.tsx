@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   description: "Sign in to your CampusClock account",
 }
 
-export default function Page({ params }: { params: { path: string } }) {
-  return <AuthShell path={params.path} />
+export default async function Page({ params }: { params: Promise<{ path: string }> }) {
+  const { path } = await params;
+  return <AuthShell path={path} />
 }
