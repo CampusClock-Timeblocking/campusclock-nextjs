@@ -9,7 +9,7 @@ interface SessionGuardProps {
     redirectTo?: string
 }
 
-export function SessionGuard({ children, redirectTo = "/auth/sign-up" }: SessionGuardProps) {
+export function SessionGuard({ children, redirectTo = "/onboarding/welcome" }: SessionGuardProps) {
     const { data: session, isPending } = authClient.useSession()
     const router = useRouter()
 
