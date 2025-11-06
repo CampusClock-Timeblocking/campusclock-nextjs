@@ -43,7 +43,7 @@ export default function WorkingHoursPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="mb-2 text-3xl font-semibold text-gray-900 sm:text-4xl"
+        className="mb-2 text-3xl font-semibold text-gray-700 dark:text-gray-100 sm:text-4xl"
       >
         {currentStep.title}
       </motion.h1>
@@ -99,7 +99,7 @@ function WorkingTimeRange({ form, stepSize }: { form: UseFormReturn<WorkingHours
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.5, ease: "easeOut" }}
     >
-      <FieldSet className="grid grid-cols-2 gap-3 text-sm text-gray-700">
+      <FieldSet className="grid grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-100">
         <FieldLegend>
           Your focus window
         </FieldLegend>

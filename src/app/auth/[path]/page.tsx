@@ -1,22 +1,19 @@
-import { AuthView } from "@daveyplate/better-auth-ui";
-import { authViewPaths } from "@daveyplate/better-auth-ui/server";
+// app/auth/[path]/page.tsx
+import type { Metadata } from "next"
+import { authViewPaths } from "@daveyplate/better-auth-ui/server"
+import AuthShell from "@/components/AuthShell" // Client-Komponente
 
-export const dynamicParams = false;
+export const dynamicParams = false
 
 export function generateStaticParams() {
-  return Object.values(authViewPaths).map((path) => ({ path }));
+  return Object.values(authViewPaths).map((path) => ({ path }))
 }
 
-export default async function AuthPage({
-  params,
-}: {
-  params: Promise<{ path: string }>;
-}) {
-  const { path } = await params;
+export const metadata: Metadata = {
+  title: "Log in • CampusClock",
+  description: "Sign in to your CampusClock account",
+}
 
-  return (
-    <main className="container flex grow flex-col items-center justify-center self-center p-4 md:p-6">
-      <AuthView path={path} callbackURL="/dashboard" />
-    </main>
-  );
+export default function Page({ params }: { params: { path: string } }) {
+  return <AuthShell path={params.path} />
 }
