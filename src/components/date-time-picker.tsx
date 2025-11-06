@@ -19,8 +19,8 @@ export interface DateTimeValue {
 }
 
 interface DateTimePickerProps {
-  value?: Date;
-  onChange?: (value: Date | undefined) => void;
+  value?: Date | null;
+  onChange?: (value: Date | undefined | null) => void;
   error?: boolean;
   disabled?: boolean;
   required?: boolean;
@@ -73,10 +73,15 @@ export const DateTimePicker = React.forwardRef<
       setShouldFocusTime(true);
     };
 
+    const handleClearDate = () => {
+      handleRemoveTime();
+      onChange?.(null);
+    };
+
     const handleDateChange = (newDate: Date | undefined) => {
       setOpen(false);
       if (!newDate) {
-        onChange?.(undefined);
+        onChange?.(null);
         return;
       }
 
@@ -128,44 +133,56 @@ export const DateTimePicker = React.forwardRef<
             {dateLabel}
             {required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                ref={ref}
-                variant="outline"
-                id="date-picker"
-                disabled={disabled}
-                className={cn(
-                  "w-full font-normal",
-                  value ? "justify-start" : "border-dashed",
-                  error && "border-destructive focus-visible:ring-destructive",
-                )}
+          <div className="flex gap-2">
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  ref={ref}
+                  variant="outline"
+                  id="date-picker"
+                  disabled={disabled}
+                  className={cn(
+                    "flex-1 font-normal",
+                    value ? "justify-start" : "border-dashed",
+                    error &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
+                >
+                  {value ? (
+                    format(value, "PPP")
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      {dateLabel}
+                    </>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto overflow-hidden p-0"
+                align="center"
               >
-                {value ? (
-                  format(value, "PPP")
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    {dateLabel}
-                  </>
-                )}
+                <Calendar
+                  mode="single"
+                  selected={value ?? undefined}
+                  captionLayout="dropdown"
+                  fromYear={new Date().getFullYear()}
+                  toYear={2050}
+                  onSelect={handleDateChange}
+                  disabled={disabled}
+                />
+              </PopoverContent>
+            </Popover>
+            {value && (
+              <Button
+                variant="outline"
+                onClick={handleClearDate}
+                className="size-9 !px-2"
+              >
+                <X />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-auto overflow-hidden p-0"
-              align="center"
-            >
-              <Calendar
-                mode="single"
-                selected={value}
-                captionLayout="dropdown"
-                fromYear={new Date().getFullYear()}
-                toYear={2050}
-                onSelect={handleDateChange}
-                disabled={disabled}
-              />
-            </PopoverContent>
-          </Popover>
+            )}
+          </div>
         </div>
 
         <div className="flex min-w-[200px] flex-1 flex-col gap-3">
@@ -183,7 +200,7 @@ export const DateTimePicker = React.forwardRef<
               {timeLabel}
             </Button>
           ) : (
-            <div className="relative">
+            <div className="flex gap-2">
               <Input
                 ref={timeInputRef}
                 type="time"
@@ -192,20 +209,16 @@ export const DateTimePicker = React.forwardRef<
                 onChange={handleTimeChange}
                 disabled={disabled}
                 className={cn(
-                  "bg-background w-full appearance-none pr-8 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none",
+                  "bg-background flex-1 appearance-none pr-8 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none",
                   error && "border-destructive focus-visible:ring-destructive",
                 )}
               />
               <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-0 right-0 h-full px-2 hover:bg-transparent"
+                variant="outline"
                 onClick={handleRemoveTime}
-                disabled={disabled}
-                tabIndex={-1}
+                className="size-9 !px-2"
               >
-                <X className="h-4 w-4" />
+                <X />
               </Button>
             </div>
           )}

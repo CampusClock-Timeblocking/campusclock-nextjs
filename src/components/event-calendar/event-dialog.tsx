@@ -9,6 +9,16 @@ import {
   RiMapPinLine,
   RiFileTextLine,
 } from "@remixicon/react";
+import {
+  CircleCheck,
+  CircleDashed,
+  CircleOff,
+  Loader,
+  Pause,
+  RedoDot,
+  SkipForward,
+  ChevronDown,
+} from "lucide-react";
 import { format } from "date-fns";
 
 import type { CalendarEvent } from "@/components/event-calendar/event-calendar";
@@ -19,6 +29,12 @@ import { CreateEventFormSchema, type CreateEventFormInput } from "@/lib/zod";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +69,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { StartHour, EndHour } from "@/components/event-calendar/constants";
+import { api } from "@/trpc/react";
+import { useUpdateTaskMutation } from "@/hooks/mutations/task";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { TaskStatus } from "@prisma/client";
+import {
+  getStatusBade,
+  getStatusIcon,
+} from "../datatable/columns/task-columns";
 
 interface EventDialogProps {
   event: CalendarEvent | null;
@@ -80,6 +105,18 @@ export function EventDialog({
 
   // Get calendars from context to check if event is from external calendar
   const { calendars } = useCalendarContext();
+
+  // Fetch task data if event is linked to a task
+  const { data: taskData, isLoading: isLoadingTask } =
+    api.task.getById.useQuery(
+      { id: displayEvent?.taskId ?? "" },
+      { enabled: !!displayEvent?.taskId },
+    );
+
+  // Update task mutation
+  const updateTaskMutation = useUpdateTaskMutation({
+    taskId: displayEvent?.taskId ?? "",
+  });
 
   // Find the calendar for this event
   const eventCalendar = calendars?.find(
@@ -119,6 +156,20 @@ export function EventDialog({
     const newDate = new Date(date);
     newDate.setHours(hours, minutes, 0, 0);
     return newDate;
+  };
+
+  const isTask = event?.taskId !== undefined && event?.taskId !== null;
+
+  // Handle task status update
+  const handleTaskStatusUpdate = async (newStatus: TaskStatus) => {
+    if (!updateTaskMutation || !taskData) return;
+
+    try {
+      await updateTaskMutation.mutateAsync({ status: newStatus });
+      toast.success(`Task status updated`);
+    } catch (error) {
+      toast.error("Failed to update task status");
+    }
   };
 
   // Update display event and edit mode when dialog opens
@@ -229,6 +280,56 @@ export function EventDialog({
 
     return (
       <>
+        {/* Task Status Banner */}
+        {isTask && taskData && (
+          <div className="mb-4">
+            <div className="bg-muted/50 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground text-xs font-medium">
+                  Task Status:
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    asChild
+                    disabled={
+                      isExternalCalendar || updateTaskMutation?.isPending
+                    }
+                  >
+                    <Button
+                      variant="ghost"
+                      className="h-auto p-0 hover:bg-transparent"
+                      disabled={
+                        isExternalCalendar || updateTaskMutation?.isPending
+                      }
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {getStatusBade(taskData.status)}
+                        <ChevronDown className="text-muted-foreground h-3 w-3" />
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[180px]">
+                    {Object.values(TaskStatus).map((status) => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => handleTaskStatusUpdate(status)}
+                        className="cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(status)}
+                          <span className="text-xs capitalize">
+                            {status.toLowerCase().replace("_", " ")}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           <div className="flex items-start gap-3">
             <RiCalendarLine
@@ -751,7 +852,7 @@ export function EventDialog({
                       type="button"
                       variant="link"
                       size="sm"
-                      className="text-muted-foreground h-8 text-xs px-0 has-[>svg]:px-0"
+                      className="text-muted-foreground h-8 px-0 text-xs has-[>svg]:px-0"
                       onClick={() => setShowDescription(true)}
                     >
                       <RiFileTextLine size={10} className="mr-1" />
@@ -763,7 +864,7 @@ export function EventDialog({
                       type="button"
                       variant="link"
                       size="sm"
-                      className="text-muted-foreground h-8 text-xs px-0 has-[>svg]:px-0"
+                      className="text-muted-foreground h-8 px-0 text-xs has-[>svg]:px-0"
                       onClick={() => setShowLocation(true)}
                     >
                       <RiMapPinLine size={10} className="mr-1" />

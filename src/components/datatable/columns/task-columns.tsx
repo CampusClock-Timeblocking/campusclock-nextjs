@@ -77,17 +77,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
     ),
     cell: ({ row }) => {
       const status = row.original.status;
-      return (
-        <Badge
-          variant="outline"
-          className="text-muted-foreground rounded-full px-1.5"
-        >
-          {getStatusIcon(status)}
-          <span className="text-xs capitalize">
-            {status.toLowerCase().replace("_", " ")}
-          </span>
-        </Badge>
-      );
+      return getStatusBade(status);
     },
     meta: {
       skeleton: () => <Skeleton className="h-[22px] w-20 rounded-full" />,
@@ -173,7 +163,7 @@ export const columns: ColumnDef<TaskWithProject>[] = [
   },
 ];
 
-function getStatusIcon(status: TaskStatus) {
+export function getStatusIcon(status: TaskStatus) {
   switch (status) {
     case TaskStatus.TO_DO:
       return <CircleDashed />;
@@ -192,4 +182,18 @@ function getStatusIcon(status: TaskStatus) {
     default:
       return null;
   }
+}
+
+export function getStatusBade(status: TaskStatus) {
+  return (
+    <Badge
+      variant="outline"
+      className="text-muted-foreground rounded-full px-1.5"
+    >
+      {getStatusIcon(status)}
+      <span className="text-xs capitalize">
+        {status.toLowerCase().replace("_", " ")}
+      </span>
+    </Badge>
+  );
 }

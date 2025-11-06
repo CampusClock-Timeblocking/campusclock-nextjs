@@ -16,7 +16,7 @@ export function CreateTaskDialog() {
   return (
     <TaskDialogContent
       hideDialog={hideDialog}
-      submitButtonText="Create"
+      type="create"
       mutation={createTaskMutation}
       autoFocusTitle
     />
@@ -50,7 +50,7 @@ export function UpdateTaskDialog({ task }: EditProps) {
     <TaskDialogContent
       hideDialog={hideDialog}
       mutation={editTaskMutation}
-      submitButtonText="Update"
+      type="update"
       initialValues={initialValues}
     />
   );

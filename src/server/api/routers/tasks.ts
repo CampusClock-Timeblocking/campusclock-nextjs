@@ -1,21 +1,25 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { parseDuration } from "@/lib/utils";
 import { createTaskInputSchema, UpdateTaskInputSchema } from "@/lib/zod";
+import { inferMissingTaskFields } from "../services/ai-infer-service";
 
 export const taskRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createTaskInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const data = await inferMissingTaskFields(input);
       const task = await ctx.db.task.create({
         data: {
-          ...input,
+          ...data.data,
           userId: ctx.session.user.id,
         },
       });
 
-      return task;
+      return {
+        inferStatus: data.status,
+        task,
+      };
     }),
 
   getById: protectedProcedure

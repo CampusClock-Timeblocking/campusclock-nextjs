@@ -1,6 +1,7 @@
 "use client";
 
 import type { FrontendUpdateTaskInput, UpdateTaskInput } from "@/lib/zod";
+import { InferenceStatus } from "@/server/api/services/ai-infer-service";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 
@@ -33,8 +34,12 @@ export function useUpdateTaskMutation({ taskId }: { taskId: string }) {
 export function useCreateTaskMutation() {
   const utils = api.useUtils();
   return api.task.create.useMutation({
-    onSuccess: () => {
-      toast.success("Task created!");
+    onSuccess: (result) => {
+      if (result.inferStatus === InferenceStatus.FAILURE) {
+        toast.error("Inference failed, fallback to default values!");
+      } else {
+        toast.success("Task created!");
+      }
       void utils.task.getAll.invalidate();
     },
     onError: () => {

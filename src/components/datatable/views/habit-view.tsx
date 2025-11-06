@@ -104,7 +104,12 @@ export function HabitView({ columns, data, isLoading }: Props) {
             <AsyncButton
               size="sm"
               variant="outline"
-              onClick={() => deleteMutation.mutate({ ids: selectedIds })}
+              onClick={() =>
+                deleteMutation.mutate(
+                  { ids: selectedIds },
+                  { onSuccess: () => setRowSelection({}) },
+                )
+              }
               isLoading={deleteMutation.isPending}
             >
               <Trash2 className="text-destructive hover:text-destructive" />

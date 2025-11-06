@@ -16,6 +16,7 @@ interface Props {
   sideContent: ReactNode;
   titlePlaceholderText: string;
   titleError?: string;
+  badgeSlot?: ReactNode;
 }
 
 export const DialogContentLayout: React.FC<Props> = ({
@@ -26,6 +27,7 @@ export const DialogContentLayout: React.FC<Props> = ({
   sideContent,
   titlePlaceholderText,
   titleError,
+  badgeSlot,
 }) => {
   return (
     <DialogContent
@@ -38,20 +40,23 @@ export const DialogContentLayout: React.FC<Props> = ({
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
-          <div>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={titlePlaceholderText}
-              className={cn(
-                "rounded-none border-none px-0 !text-3xl font-semibold shadow-none focus-visible:border-0 focus-visible:ring-0",
-                titleError && "placeholder:text-destructive/50",
+          <div className="flex justify-between gap-5">
+            <div className="flex w-full flex-col">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={titlePlaceholderText}
+                className={cn(
+                  "w-full rounded-none border-none px-0 !text-3xl font-semibold shadow-none focus-visible:border-0 focus-visible:ring-0",
+                  titleError && "placeholder:text-destructive/50",
+                )}
+                autoFocus={initFocusTitle}
+              />
+              {titleError && (
+                <p className="mt-1 text-sm text-red-500">{titleError}</p>
               )}
-              autoFocus={initFocusTitle}
-            />
-            {titleError && (
-              <p className="mt-1 text-sm text-red-500">{titleError}</p>
-            )}
+            </div>
+            {badgeSlot}
           </div>
           {mainContent}
         </div>

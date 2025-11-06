@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { FolderOpen, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
@@ -30,6 +30,12 @@ import { AsyncButton } from "@/components/basic-components/async-action-button";
 import { api } from "@/trpc/react";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useShiftEnter } from "@/hooks/kbd";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   hideDialog: () => void;
@@ -38,15 +44,15 @@ interface Props {
   mutation:
     | ReturnType<typeof useCreateTaskMutation>
     | ReturnType<typeof useUpdateTaskMutation>;
-  submitButtonText: string;
+  type: "create" | "update";
 }
 
 const DEFAULT_VALUES = {
   title: "",
   description: "",
-  priority: 3,
-  durationMinutes: "30m",
-  complexity: 5,
+  priority: undefined,
+  durationMinutes: undefined,
+  complexity: undefined,
   due: undefined,
   projectId: undefined,
 };
@@ -56,7 +62,7 @@ export const TaskDialogContent: React.FC<Props> = ({
   autoFocusTitle,
   initialValues,
   mutation,
-  submitButtonText,
+  type,
 }) => {
   const form = useForm<FrontendCreateTaskInput>({
     resolver: zodResolver(rawCreateTaskSchema),
@@ -73,6 +79,9 @@ export const TaskDialogContent: React.FC<Props> = ({
   } = form;
 
   const title = watch("title");
+  const priority = watch("priority");
+  const durationMinutes = watch("durationMinutes");
+  const complexity = watch("complexity");
 
   const handleFormSubmit = handleSubmit((data) => {
     mutation.mutate(data, {
@@ -99,49 +108,122 @@ export const TaskDialogContent: React.FC<Props> = ({
       }}
       initFocusTitle={autoFocusTitle}
       titleError={errors.title?.message}
+      badgeSlot={
+        type === "create" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="secondary"
+                className="hover:bg-secondary/80 h-9 cursor-help gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors"
+              >
+                <Sparkles className="size-4 text-blue-500 dark:text-blue-400" />
+                <span className="font-medium text-blue-500 dark:text-blue-400">
+                  AI Infer
+                </span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[250px]">
+              <p className="mb-1 font-medium">AI-Powered Assistance</p>
+              <p className="text-muted-foreground text-xs">
+                Automatically fills in priority, duration, and complexity if not
+                provided, based on your task title and description.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
       mainContent={
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
-              <Controller
-                control={control}
-                name="priority"
-                render={({ field }) => (
-                  <Select
-                    value={field.value?.toString()}
-                    onValueChange={(value) => field.onChange(parseInt(value))}
-                  >
-                    <SelectTrigger id="priority">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 - Lowest</SelectItem>
-                      <SelectItem value="2">2 - Low</SelectItem>
-                      <SelectItem value="3">3 - Medium</SelectItem>
-                      <SelectItem value="4">4 - High</SelectItem>
-                      <SelectItem value="5">5 - Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+              {priority === undefined ? (
+                <Button
+                  variant="outline"
+                  className="w-full border-dashed"
+                  onClick={() => setValue("priority", 3)}
+                >
+                  <Plus />
+                  Priority
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Controller
+                    control={control}
+                    name="priority"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value?.toString()}
+                        onValueChange={(value) =>
+                          field.onChange(parseInt(value))
+                        }
+                      >
+                        <SelectTrigger id="priority">
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 - Lowest</SelectItem>
+                          <SelectItem value="2">2 - Low</SelectItem>
+                          <SelectItem value="3">3 - Medium</SelectItem>
+                          <SelectItem value="4">4 - High</SelectItem>
+                          <SelectItem value="5">5 - Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {type === "create" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setValue("priority", undefined)}
+                      className="size-9 !px-2"
+                    >
+                      <X />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="duration">Estimated Duration</Label>
-              <Controller
-                control={control}
-                name="durationMinutes"
-                render={({ field }) => (
-                  <Input
-                    id="duration"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    onBlur={field.onBlur}
-                    placeholder="e.g., 30m, 2h, 2:30h"
+              {durationMinutes === undefined ? (
+                <Button
+                  variant="outline"
+                  className="w-full border-dashed"
+                  onClick={() => setValue("durationMinutes", "")}
+                >
+                  <Plus />
+                  Duration
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Controller
+                    control={control}
+                    name="durationMinutes"
+                    render={({ field }) => (
+                      <Input
+                        id="duration"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        onBlur={field.onBlur}
+                        placeholder="e.g., 30m, 2h, 2:30h"
+                      />
+                    )}
                   />
-                )}
-              />
+                  {type === "create" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setValue("durationMinutes", undefined);
+                        clearErrors("durationMinutes");
+                      }}
+                      className="size-9 !px-2"
+                    >
+                      <X />
+                    </Button>
+                  )}
+                </div>
+              )}
               {errors.durationMinutes && (
                 <p className="text-sm text-red-500">
                   {errors.durationMinutes.message}
@@ -175,38 +257,60 @@ export const TaskDialogContent: React.FC<Props> = ({
             )}
           />
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="complexity">Complexity</Label>
-              <Controller
-                control={control}
-                name="complexity"
-                render={({ field }) => (
-                  <span className="text-muted-foreground text-sm font-medium">
-                    {field.value ?? 5}/10
-                  </span>
-                )}
-              />
-            </div>
-            <Controller
-              control={control}
-              name="complexity"
-              render={({ field }) => (
-                <Slider
-                  id="complexity"
-                  value={[field.value ?? 5]}
-                  onValueChange={(value) => field.onChange(value[0])}
-                  min={1}
-                  max={10}
-                  step={1}
-                  className="w-full"
+          <div className="space-y-2">
+            <Label htmlFor="complexity">Complexity</Label>
+            {complexity === undefined ? (
+              <Button
+                variant="outline"
+                className="w-full border-dashed"
+                onClick={() => setValue("complexity", 5)}
+              >
+                <Plus />
+                Complexity
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Controller
+                    control={control}
+                    name="complexity"
+                    render={({ field }) => (
+                      <span className="text-muted-foreground text-sm font-medium">
+                        {field.value ?? 5}/10
+                      </span>
+                    )}
+                  />
+                  {type === "create" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setValue("complexity", undefined)}
+                      className="size-7 !px-1.5"
+                    >
+                      <X className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <Controller
+                  control={control}
+                  name="complexity"
+                  render={({ field }) => (
+                    <Slider
+                      id="complexity"
+                      value={[field.value ?? 5]}
+                      onValueChange={(value) => field.onChange(value[0])}
+                      min={1}
+                      max={10}
+                      step={1}
+                      className="w-full"
+                    />
+                  )}
                 />
-              )}
-            />
-            <div className="text-muted-foreground flex justify-between text-xs">
-              <span>Simple</span>
-              <span>Complex</span>
-            </div>
+                <div className="text-muted-foreground flex justify-between text-xs">
+                  <span>Simple</span>
+                  <span>Complex</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -267,8 +371,9 @@ export const TaskDialogContent: React.FC<Props> = ({
                       <Button
                         variant="outline"
                         onClick={() => field.onChange(null)}
+                        className="size-9 !px-2"
                       >
-                        Clear
+                        <X />
                       </Button>
                     )}
                   </div>
@@ -293,7 +398,7 @@ export const TaskDialogContent: React.FC<Props> = ({
               onClick={handleFormSubmit}
               isLoading={mutation.isPending}
             >
-              {submitButtonText}{" "}
+              {type === "create" ? "Create" : "Update"}{" "}
               <KbdGroup>
                 <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">
                   ⇧

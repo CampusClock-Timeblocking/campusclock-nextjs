@@ -113,6 +113,11 @@ export const durationSchema = z
     },
   );
 
+export const optionalDurationSchema = z.union([
+  durationSchema.optional(),
+  z.literal("").transform(() => undefined),
+]);
+
 export const parseDurationSchema = durationSchema.transform((input, ctx) => {
   const parsed = parseDuration(input);
   if (parsed === null) {
@@ -130,10 +135,10 @@ export const rawCreateTaskSchema = z.object({
   title: titleSchema,
   description: descriptionSchema.optional(),
   status: TaskStatusSchema.optional(),
-  durationMinutes: durationSchema,
+  durationMinutes: optionalDurationSchema,
   priority: prioritySchema.optional(),
   complexity: z.int().min(1).max(10).optional(),
-  due: z.date().optional(),
+  due: z.date().optional().nullable(),
   scheduledTime: z.iso.time().optional(),
   projectId: z.uuid().optional().nullable(),
   habitId: z.uuid().optional(),
@@ -143,7 +148,7 @@ export const rawUpdateTaskSchema = rawCreateTaskSchema.partial();
 
 export const createTaskInputSchema = z.object({
   ...rawCreateTaskSchema.omit({ durationMinutes: true }).shape,
-  durationMinutes: parseDurationSchema,
+  durationMinutes: parseDurationSchema.optional(),
 });
 
 export const UpdateTaskInputSchema = createTaskInputSchema.partial();
@@ -327,6 +332,12 @@ export const CreateEventFormSchema = CreateEventSchema.omit({
     message: "End date must be after start date",
     path: ["end"],
   });
+
+export const aiTaskInferenceResultSchema = z.object({
+  durationMinutes: z.number().int().min(1).max(1440),
+  priority: z.number().int().min(1).max(5),
+  complexity: z.number().int().min(1).max(10),
+});
 
 /* Type Exports */
 export type CreateEventInput = z.infer<typeof CreateEventSchema>;

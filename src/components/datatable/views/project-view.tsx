@@ -138,7 +138,12 @@ export function ProjectView({ columns, data, isLoading }: Props) {
             <AsyncButton
               size="sm"
               variant="outline"
-              onClick={() => delteMutation.mutate({ ids: selectedIds })}
+              onClick={() =>
+                delteMutation.mutate(
+                  { ids: selectedIds },
+                  { onSuccess: () => setRowSelection({}) },
+                )
+              }
               isLoading={delteMutation.isPending}
             >
               <Trash2 className="text-destructive hover:text-destructive" />

@@ -23,6 +23,7 @@ export const env = createEnv({
     // Scheduler solver service
     SOLVER_SERVICE_URL: z.string().url().default("http://localhost:8000"),
     SOLVER_TIMEOUT_MS: z.string().default("10000"),
+    OPENAI_API_KEY: z.string().optional(),
   },
 
   /**
@@ -52,6 +53,11 @@ export const env = createEnv({
     REDIS_URL: process.env.REDIS_URL,
     SOLVER_SERVICE_URL: process.env.SOLVER_SERVICE_URL,
     SOLVER_TIMEOUT_MS: process.env.SOLVER_TIMEOUT_MS,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    // Add more server-side env vars here if needed
+    // e.g. NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    // Note: Only add client-side env vars here that are prefixed with `NEXT_PUBLIC_`
+    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
