@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Loader2, AlertCircle, CheckCircle2, Zap } from "lucide-react";
+import {
+  Calendar,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Zap,
+} from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -62,7 +68,10 @@ export function ScheduleButton() {
   // Schedule and save mutation
   const scheduleMutation = api.scheduler.scheduleAndSave.useMutation({
     onSuccess: (result) => {
-      if (result.meta.status === "optimal" || result.meta.status === "feasible") {
+      if (
+        result.meta.status === "optimal" ||
+        result.meta.status === "feasible"
+      ) {
         toast.success("Tasks scheduled successfully!", {
           description: `Scheduled ${result.scheduledTaskIds.length} task${result.scheduledTaskIds.length !== 1 ? "s" : ""} in ${(result.meta.wallTimeMs / 1000).toFixed(1)}s`,
           position: "bottom-left",
@@ -94,9 +103,10 @@ export function ScheduleButton() {
   });
 
   // Find a writable calendar (prefer local, non-read-only)
-  const writableCalendar = calendars?.find(
-    (cal) => cal.type === CalendarType.LOCAL && !cal.readOnly
-  ) ?? calendars?.find((cal) => !cal.readOnly);
+  const writableCalendar =
+    calendars?.find(
+      (cal) => cal.type === CalendarType.LOCAL && !cal.readOnly,
+    ) ?? calendars?.find((cal) => !cal.readOnly);
 
   const handlePreviewSchedule = () => {
     previewMutation.mutate({
@@ -175,7 +185,7 @@ export function ScheduleButton() {
             {stats?.unscheduledTasks !== 1 ? "s" : ""} waiting
           </div>
           {stats && stats.scheduledTasks > 0 && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-muted-foreground text-xs">
               {stats.scheduledTasks} already scheduled
             </div>
           )}
@@ -221,7 +231,7 @@ export function ScheduleButton() {
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Schedule Preview</DialogTitle>
             <DialogDescription>
@@ -243,9 +253,11 @@ export function ScheduleButton() {
                       tasks scheduled
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Success rate: {(previewResult.meta.successRate * 100).toFixed(0)}% •
-                    Computed in {(previewResult.meta.wallTimeMs / 1000).toFixed(2)}s
+                  <div className="text-muted-foreground text-xs">
+                    Success rate:{" "}
+                    {(previewResult.meta.successRate * 100).toFixed(0)}% •
+                    Computed in{" "}
+                    {(previewResult.meta.wallTimeMs / 1000).toFixed(2)}s
                   </div>
                 </div>
                 {previewResult.meta.status === "optimal" && (
@@ -259,8 +271,11 @@ export function ScheduleButton() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     {previewResult.unscheduledTaskIds.length} task
-                    {previewResult.unscheduledTaskIds.length !== 1 ? "s" : ""} could not be
-                    scheduled. Try extending your working hours or deadline dates.
+                    {previewResult.unscheduledTaskIds.length !== 1
+                      ? "s"
+                      : ""}{" "}
+                    could not be scheduled. Try extending your working hours or
+                    deadline dates.
                   </AlertDescription>
                 </Alert>
               )}
@@ -269,7 +284,7 @@ export function ScheduleButton() {
               {previewResult.events.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold">Scheduled Tasks</h4>
-                  <div className="space-y-2 max-h-80 overflow-y-auto rounded-lg border p-3">
+                  <div className="max-h-80 space-y-2 overflow-y-auto rounded-lg border p-3">
                     {previewResult.events.map((event, index) => (
                       <div
                         key={index}
@@ -277,13 +292,15 @@ export function ScheduleButton() {
                       >
                         <div className="flex-1">
                           <div className="font-medium">{event.title}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-muted-foreground text-xs">
                             {formatDate(event.start)} → {formatDate(event.end)}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-muted-foreground text-xs">
                           {Math.round(
-                            (event.end.getTime() - event.start.getTime()) / 1000 / 60
+                            (event.end.getTime() - event.start.getTime()) /
+                              1000 /
+                              60,
                           )}
                           min
                         </div>
@@ -304,7 +321,10 @@ export function ScheduleButton() {
                 </Button>
                 <Button
                   onClick={handleConfirmSchedule}
-                  disabled={scheduleMutation.isPending || previewResult.scheduledTaskIds.length === 0}
+                  disabled={
+                    scheduleMutation.isPending ||
+                    previewResult.scheduledTaskIds.length === 0
+                  }
                 >
                   {scheduleMutation.isPending ? (
                     <>

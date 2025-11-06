@@ -13,7 +13,7 @@ export async function GET() {
     if (env.NODE_ENV === "production") {
       return NextResponse.json(
         { error: "Cache purge is not allowed in production" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -26,7 +26,7 @@ export async function GET() {
         message: "Cache purged successfully",
         timestamp: new Date().toISOString(),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Failed to purge cache:", error);
@@ -36,7 +36,7 @@ export async function GET() {
         error: "Failed to purge cache",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -19,7 +19,7 @@ export const schedulerRouter = createTRPCRouter({
         timeHorizon: z.number().int().min(1).max(30).optional(),
         taskIds: z.array(z.string().uuid()).optional(),
         baseDate: z.date().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const schedulerService = new SchedulerService(ctx.db);
@@ -31,7 +31,7 @@ export const schedulerRouter = createTRPCRouter({
             timeHorizon: input.timeHorizon,
             taskIds: input.taskIds,
             baseDate: input.baseDate,
-          }
+          },
         );
 
         return result;
@@ -56,7 +56,7 @@ export const schedulerRouter = createTRPCRouter({
         timeHorizon: z.number().int().min(1).max(30).optional(),
         taskIds: z.array(z.string().uuid()).optional(),
         baseDate: z.date().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const schedulerService = new SchedulerService(ctx.db);
@@ -91,7 +91,7 @@ export const schedulerRouter = createTRPCRouter({
             timeHorizon: input.timeHorizon,
             taskIds: input.taskIds,
             baseDate: input.baseDate,
-          }
+          },
         );
 
         return result;
@@ -115,7 +115,7 @@ export const schedulerRouter = createTRPCRouter({
         calendarId: z.string().uuid(),
         timeHorizon: z.number().int().min(1).max(30).optional(),
         baseDate: z.date().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const schedulerService = new SchedulerService(ctx.db);
@@ -149,7 +149,7 @@ export const schedulerRouter = createTRPCRouter({
           {
             timeHorizon: input.timeHorizon,
             baseDate: input.baseDate,
-          }
+          },
         );
 
         return result;

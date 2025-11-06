@@ -2,36 +2,26 @@
  * ============================================================================
  * ENHANCED SCHEDULER - Main Implementation
  * ============================================================================
- * 
+ *
  * This file contains the complete scheduler implementation. It:
  * 1. Validates schedule requests
  * 2. Builds constraint problems for the solver
  * 3. Communicates with the solver service
  * 4. Parses solutions back into scheduled tasks
  * 5. Analyzes soft constraints (energy matching, location clustering, etc.)
- * 
+ *
  * The scheduler will automatically extend the time horizon if needed to fit
  * more tasks, up to a configurable maximum number of extensions.
- * 
- * @example
- * ```typescript
- * const scheduler = new EnhancedScheduler({
- *   baseUrl: 'http://localhost:5000',
- *   timeoutMs: 5000,
- *   successThreshold: 0.8,
- *   maxHorizonExtensions: 7,
- * });
- * 
- * const result = await scheduler.schedule({
- *   timeHorizon: 7,
- *   tasks: [{ id: '1', priority: 0.8, durationMinutes: 60 }],
- *   workingHours: [...],  // 7 days
- *   energyProfile: [...], // 24 hours
- * });
- * ```
+ *
  */
 
-import { differenceInHours, differenceInMinutes, isValid, parseISO, startOfDay } from "date-fns";
+import {
+  differenceInHours,
+  differenceInMinutes,
+  isValid,
+  parseISO,
+  startOfDay,
+} from "date-fns";
 import { z } from "zod";
 import { SolverClient, type SolverClientOptions } from "./solver-client";
 import type {
@@ -86,14 +76,14 @@ export class EnhancedScheduler {
 
   /**
    * Schedule tasks within the given constraints.
-   * 
+   *
    * The scheduler will:
    * 1. Validate the request
    * 2. Build a constraint problem
    * 3. Solve it using the constraint solver
    * 4. Try extending the time horizon if needed (up to maxExtensions times)
    * 5. Return the best solution found
-   * 
+   *
    * @param request - The scheduling request
    * @returns The schedule with metadata about the solution quality
    */
@@ -120,8 +110,11 @@ export class EnhancedScheduler {
 
     // Try solving with progressively longer time horizons if needed
     for (let extension = 0; extension <= this.maxExtensions; extension += 1) {
-      const attempt = { ...validated, timeHorizon: validated.timeHorizon + extension };
-      
+      const attempt = {
+        ...validated,
+        timeHorizon: validated.timeHorizon + extension,
+      };
+
       // Build the constraint problem
       const { payload, taskMetadata } = buildConstraintProblem(attempt);
 
@@ -143,23 +136,35 @@ export class EnhancedScheduler {
 
       // Solve the constraint problem
       const solverResponse = await this.solverClient.solve(payload);
-      
+
       // Parse the solution
-      const parsed = parseSolverResponse(solverResponse, taskMetadata, attempt.baseDate);
-      
+      const parsed = parseSolverResponse(
+        solverResponse,
+        taskMetadata,
+        attempt.baseDate,
+      );
+
       // Add metadata
       const response: ScheduleResponse = {
         ...parsed,
         meta: {
-          objectiveValue: parsed.meta?.objectiveValue ?? solverResponse.objective_value ?? null,
-          wallTimeMs: parsed.meta?.wallTimeMs ?? solverResponse.wall_time * 1000,
+          objectiveValue:
+            parsed.meta?.objectiveValue ??
+            solverResponse.objective_value ??
+            null,
+          wallTimeMs:
+            parsed.meta?.wallTimeMs ?? solverResponse.wall_time * 1000,
           attemptCount: extension + 1,
         },
       };
 
       // Analyze soft constraints if we have scheduled tasks
       if (response.tasks.length > 0) {
-        const analysis = analyseSoftConstraints(response.tasks, attempt.tasks, attempt.energyProfile);
+        const analysis = analyseSoftConstraints(
+          response.tasks,
+          attempt.tasks,
+          attempt.energyProfile,
+        );
         response.softConstraints = analysis;
       }
 
@@ -176,17 +181,19 @@ export class EnhancedScheduler {
     }
 
     // Return best solution or error
-    return bestResponse ?? {
-      status: "error",
-      solverStatus: "UNKNOWN",
-      tasks: [],
-      successRate: 0,
-      meta: {
-        objectiveValue: null,
-        wallTimeMs: 0,
-        attemptCount: 0,
-      },
-    };
+    return (
+      bestResponse ?? {
+        status: "error",
+        solverStatus: "UNKNOWN",
+        tasks: [],
+        successRate: 0,
+        meta: {
+          objectiveValue: null,
+          wallTimeMs: 0,
+          attemptCount: 0,
+        },
+      }
+    );
   }
 }
 
@@ -218,8 +225,12 @@ const ScheduleSchema = z.object({
   timeHorizon: z.number().int().positive(),
   tasks: z.array(TaskSchema).nonempty("At least one task is required"),
   busySlots: z.array(BusySlotSchema).optional(),
-  workingHours: z.array(WorkingHoursSchema).length(7, "workingHours must have 7 entries"),
-  energyProfile: z.array(z.number().finite()).nonempty("energyProfile cannot be empty"),
+  workingHours: z
+    .array(WorkingHoursSchema)
+    .length(7, "workingHours must have 7 entries"),
+  energyProfile: z
+    .array(z.number().finite())
+    .nonempty("energyProfile cannot be empty"),
   baseDate: z.date().optional(),
   currentTime: z.date().optional(),
 });
@@ -231,17 +242,24 @@ const ScheduleSchema = z.object({
  * - Normalizes values to expected ranges
  * - Validates working hours make sense
  */
-export function validateScheduleRequest(input: ScheduleRequest): ValidatedScheduleRequest {
+export function validateScheduleRequest(
+  input: ScheduleRequest,
+): ValidatedScheduleRequest {
   const parsed = ScheduleSchema.parse(input);
 
   const currentTime = parsed.currentTime ?? new Date();
-  const baseDate = parsed.baseDate ? startOfDay(parsed.baseDate) : startOfDay(currentTime);
+  const baseDate = parsed.baseDate
+    ? startOfDay(parsed.baseDate)
+    : startOfDay(currentTime);
 
   // Normalize tasks
   const tasks: ValidatedTask[] = parsed.tasks.map((task) => ({
     id: task.id,
     priority: clamp(task.priority, 0, 1),
-    durationMinutes: Math.max(MIN_DURATION_MINUTES, Math.round(task.durationMinutes)),
+    durationMinutes: Math.max(
+      MIN_DURATION_MINUTES,
+      Math.round(task.durationMinutes),
+    ),
     deadline: task.deadline ?? undefined,
     complexity: clamp(task.complexity ?? 0.5, 0, 1),
     location: task.location ?? "Office",
@@ -260,7 +278,7 @@ export function validateScheduleRequest(input: ScheduleRequest): ValidatedSchedu
     const endMinutes = timeToMinutes(hours.endTime);
     if (startMinutes >= endMinutes) {
       throw new Error(
-        `Invalid working hours on day index ${index}: start must be before end: ${hours.startTime} - ${hours.endTime}`
+        `Invalid working hours on day index ${index}: start must be before end: ${hours.startTime} - ${hours.endTime}`,
       );
     }
   });
@@ -284,7 +302,7 @@ export function validateScheduleRequest(input: ScheduleRequest): ValidatedSchedu
 
 /**
  * Build a constraint satisfaction problem from the schedule request.
- * 
+ *
  * This creates:
  * - Variables for task start/end times
  * - Boolean variables for task presence and day assignment
@@ -293,10 +311,12 @@ export function validateScheduleRequest(input: ScheduleRequest): ValidatedSchedu
  * - Working hours constraints
  * - Deadline constraints
  * - An objective function to maximize (prioritizes important tasks)
- * 
+ *
  * @returns A constraint problem ready to send to the solver
  */
-function buildConstraintProblem(request: ValidatedScheduleRequest): ConstraintBuildResult {
+function buildConstraintProblem(
+  request: ValidatedScheduleRequest,
+): ConstraintBuildResult {
   const payload: SolverRequestPayload = {
     variables: [],
     bool_variables: [],
@@ -324,7 +344,7 @@ function buildConstraintProblem(request: ValidatedScheduleRequest): ConstraintBu
 
     payload.variables.push(
       { id: startVar, min: 0, max: maxStart },
-      { id: endVar, min: duration, max: horizonMinutes }
+      { id: endVar, min: duration, max: horizonMinutes },
     );
     payload.bool_variables!.push({ id: presenceVar });
     payload.intervals!.push({
@@ -353,12 +373,15 @@ function buildConstraintProblem(request: ValidatedScheduleRequest): ConstraintBu
       endVar,
       presenceVar,
       request,
-      horizonMinutes
+      horizonMinutes,
     );
 
     // Add deadline constraint if task has one
     if (task.deadline) {
-      const deadlineMinutes = datetimeToMinutes(task.deadline, request.baseDate);
+      const deadlineMinutes = datetimeToMinutes(
+        task.deadline,
+        request.baseDate,
+      );
       if (deadlineMinutes > 0 && deadlineMinutes <= horizonMinutes) {
         payload.constraints!.push({
           type: "less_equal",
@@ -396,7 +419,7 @@ function buildConstraintProblem(request: ValidatedScheduleRequest): ConstraintBu
     // Busy slots have fixed times
     payload.variables.push(
       { id: startVar, min: clampedStart, max: clampedStart },
-      { id: endVar, min: clampedEnd, max: clampedEnd }
+      { id: endVar, min: clampedEnd, max: clampedEnd },
     );
 
     payload.intervals!.push({
@@ -434,7 +457,7 @@ function buildConstraintProblem(request: ValidatedScheduleRequest): ConstraintBu
 
 /**
  * Add constraints to ensure a task only runs during working hours.
- * 
+ *
  * For each day in the horizon:
  * - Create a boolean variable indicating the task is scheduled on that day
  * - Constrain task start >= working hours start (if task is on that day)
@@ -448,7 +471,7 @@ function addWorkingHoursConstraints(
   endVar: string,
   presenceVar: string,
   request: ValidatedScheduleRequest,
-  horizonMinutes: number
+  horizonMinutes: number,
 ): void {
   const dayBoolIds: string[] = [];
   const minutesPerDay = 24 * 60;
@@ -462,7 +485,7 @@ function addWorkingHoursConstraints(
 
     const windowStart = day * minutesPerDay + timeToMinutes(working.startTime);
     const windowEnd = day * minutesPerDay + timeToMinutes(working.endTime);
-    
+
     // Skip if window is invalid or outside horizon
     if (windowStart >= windowEnd || windowStart >= horizonMinutes) {
       continue;
@@ -491,7 +514,7 @@ function addWorkingHoursConstraints(
         // If this day is NOT selected, task must still be scheduled somewhere
         type: "bool_or",
         literals: [`!${dayBool}`, presenceVar],
-      }
+      },
     );
   }
 
@@ -521,7 +544,7 @@ function addWorkingHoursConstraints(
 
 /**
  * Parse the solver's response into a user-friendly schedule.
- * 
+ *
  * Extracts:
  * - Which tasks were scheduled and when
  * - Success rate (fraction of tasks scheduled)
@@ -530,7 +553,7 @@ function addWorkingHoursConstraints(
 function parseSolverResponse(
   response: SolverResponsePayload,
   metadata: TaskConstraintMetadata[],
-  baseDate: Date
+  baseDate: Date,
 ): ScheduleResponse {
   // Build a lookup map for intervals
   const intervalById = new Map<string, SolverIntervalValue>();
@@ -557,7 +580,8 @@ function parseSolverResponse(
     });
 
   // Calculate success rate
-  const successRate = metadata.length > 0 ? scheduledTasks.length / metadata.length : 1;
+  const successRate =
+    metadata.length > 0 ? scheduledTasks.length / metadata.length : 1;
 
   // Map solver status to user-friendly status
   let status: ScheduleResponse["status"];
@@ -597,7 +621,7 @@ function parseSolverResponse(
 function analyseSoftConstraints(
   scheduled: ScheduledTask[],
   tasks: ValidatedTask[],
-  energyProfile: number[]
+  energyProfile: number[],
 ): SoftConstraintAnalysis {
   const energy = analyzeEnergyComplexity(scheduled, tasks, energyProfile);
   const location = analyzeLocationClustering(scheduled, tasks);
@@ -624,7 +648,7 @@ function analyseSoftConstraints(
 function analyzeEnergyComplexity(
   scheduled: ScheduledTask[],
   tasks: ValidatedTask[],
-  energyProfile: number[]
+  energyProfile: number[],
 ): EnergyComplexityAnalysis {
   let complexTasks = 0;
   let perfectMatches = 0; // Energy >= 0.8
@@ -635,7 +659,7 @@ function analyzeEnergyComplexity(
 
   for (const scheduledTask of scheduled) {
     const task = taskById.get(scheduledTask.id);
-    
+
     // Only analyze complex tasks
     if (!task || task.complexity < COMPLEXITY_THRESHOLD) {
       continue;
@@ -643,7 +667,9 @@ function analyzeEnergyComplexity(
 
     complexTasks += 1;
 
-    const start = scheduledTask.start ? safeParseISO(scheduledTask.start) : null;
+    const start = scheduledTask.start
+      ? safeParseISO(scheduledTask.start)
+      : null;
     if (!start) {
       continue;
     }
@@ -677,7 +703,7 @@ function analyzeEnergyComplexity(
  */
 function analyzeLocationClustering(
   scheduled: ScheduledTask[],
-  tasks: ValidatedTask[]
+  tasks: ValidatedTask[],
 ): LocationClusteringAnalysis {
   const taskById = new Map(tasks.map((task) => [task.id, task]));
   const locationDays = new Map<string, Set<string>>(); // location -> set of days
@@ -689,7 +715,9 @@ function analyzeLocationClustering(
       continue;
     }
 
-    const start = scheduledTask.start ? safeParseISO(scheduledTask.start) : null;
+    const start = scheduledTask.start
+      ? safeParseISO(scheduledTask.start)
+      : null;
     if (!start) {
       continue;
     }
@@ -712,7 +740,7 @@ function analyzeLocationClustering(
     // Efficiency: 1/days (fewer days = better clustering)
     const efficiency = days > 0 ? 1 / days : 0;
     totalEfficiency += efficiency;
-    
+
     // Count as a cluster if multiple tasks at same location are well-grouped
     if (count > 1 && days <= Math.floor(count / 2)) {
       clusters += 1;
@@ -720,7 +748,8 @@ function analyzeLocationClustering(
   }
 
   const locationDistribution = Object.fromEntries(locationCounts.entries());
-  const efficiency = locationCounts.size > 0 ? totalEfficiency / locationCounts.size : 0;
+  const efficiency =
+    locationCounts.size > 0 ? totalEfficiency / locationCounts.size : 0;
 
   return {
     clusters,
@@ -733,11 +762,15 @@ function analyzeLocationClustering(
  * Analyze workload distribution across days.
  * Ideally, work should be balanced (similar amount each day).
  */
-function analyzeWorkloadBalance(scheduled: ScheduledTask[]): WorkloadBalanceAnalysis {
+function analyzeWorkloadBalance(
+  scheduled: ScheduledTask[],
+): WorkloadBalanceAnalysis {
   const dailyWorkload = new Map<string, number>(); // day -> minutes
 
   for (const scheduledTask of scheduled) {
-    const start = scheduledTask.start ? safeParseISO(scheduledTask.start) : null;
+    const start = scheduledTask.start
+      ? safeParseISO(scheduledTask.start)
+      : null;
     const end = scheduledTask.end ? safeParseISO(scheduledTask.end) : null;
     if (!start || !end) {
       continue;
@@ -757,11 +790,13 @@ function analyzeWorkloadBalance(scheduled: ScheduledTask[]): WorkloadBalanceAnal
   }
 
   const workloads = [...dailyWorkload.values()];
-  const avg = workloads.reduce((acc, value) => acc + value, 0) / workloads.length;
-  
+  const avg =
+    workloads.reduce((acc, value) => acc + value, 0) / workloads.length;
+
   // Calculate standard deviation (lower = more balanced)
   const variance =
-    workloads.reduce((acc, value) => acc + (value - avg) ** 2, 0) / workloads.length;
+    workloads.reduce((acc, value) => acc + (value - avg) ** 2, 0) /
+    workloads.length;
   const balanceScore = Math.sqrt(variance);
 
   return {
@@ -778,13 +813,16 @@ function analyzeWorkloadBalance(scheduled: ScheduledTask[]): WorkloadBalanceAnal
 /**
  * Calculate a comprehensive score for a task.
  * Used in the objective function to prioritize which tasks to schedule.
- * 
+ *
  * Components:
  * - Priority: Base importance set by user (0-100 points)
  * - Urgency: How close to deadline (0-50 points)
  * - Complexity: Small bonus for complex tasks (0-5 points)
  */
-function calculateTaskScore(task: ValidatedTask, currentTime: Date): TaskScoreComponents {
+function calculateTaskScore(
+  task: ValidatedTask,
+  currentTime: Date,
+): TaskScoreComponents {
   const baseScore = task.priority * 100;
   const urgency = calculateUrgency(task.deadline, currentTime);
   const urgencyScore = urgency * 50;
@@ -802,10 +840,13 @@ function calculateTaskScore(task: ValidatedTask, currentTime: Date): TaskScoreCo
 /**
  * Calculate urgency based on deadline proximity.
  * Returns 0-1 where 1 = overdue/very soon, 0 = no deadline/far away.
- * 
+ *
  * Uses exponential decay: urgency decreases as time to deadline increases.
  */
-function calculateUrgency(deadline: string | null | undefined, currentTime: Date): number {
+function calculateUrgency(
+  deadline: string | null | undefined,
+  currentTime: Date,
+): number {
   if (!deadline) {
     return 0;
   }
@@ -919,7 +960,7 @@ function minutesToDateTime(minutes: number, baseDate: Date): string {
  */
 function normalizeEnergyProfile(energy: number[]): number[] {
   const length = 24;
-  
+
   if (!energy || energy.length === 0) {
     return Array.from({ length }, () => 0.5);
   }
@@ -931,9 +972,10 @@ function normalizeEnergyProfile(energy: number[]): number[] {
   // Truncate or pad to 24 values
   const result = energy.slice(0, length).map((v) => clamp(v, 0, 1));
   if (result.length < length) {
-    const average = result.length > 0 
-      ? result.reduce((acc, value) => acc + value, 0) / result.length 
-      : 0.5;
+    const average =
+      result.length > 0
+        ? result.reduce((acc, value) => acc + value, 0) / result.length
+        : 0.5;
     while (result.length < length) {
       result.push(average);
     }

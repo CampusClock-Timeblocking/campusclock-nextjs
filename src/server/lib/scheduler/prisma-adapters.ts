@@ -2,31 +2,31 @@
  * ============================================================================
  * PRISMA ADAPTERS - Database Integration for Scheduler
  * ============================================================================
- * 
+ *
  * This file provides adapter functions to convert between Prisma database
  * entities and scheduler types. Use these to easily schedule tasks from
  * your database.
- * 
+ *
  * Main conversions:
  * - Task (from DB) -> ValidatedTask (for scheduler)
  * - Event (from DB) -> BusySlot (for scheduler)
  * - WorkingPreferences -> WorkingHours array (7 days)
  * - WorkingPreferences -> Energy profile (24 hours)
- * 
- * @example
- * ```typescript
- * import { taskToSchedulerTask, eventToBusySlot } from './prisma-adapters';
- * 
- * const dbTask = await db.task.findUnique({ where: { id: '123' } });
- * const schedulerTask = taskToSchedulerTask(dbTask);
- * 
- * const dbEvents = await db.event.findMany({ where: { userId } });
- * const busySlots = dbEvents.map(eventToBusySlot);
- * ```
+ *
  */
 
-import type { Task, Event, WorkingPreferences, SchedulingConfig, Weekday } from "@prisma/client";
-import type { ValidatedTask, BusySlot, WorkingHours as SchedulerWorkingHours } from "./types";
+import type {
+  Task,
+  Event,
+  WorkingPreferences,
+  SchedulingConfig,
+  Weekday,
+} from "@prisma/client";
+import type {
+  ValidatedTask,
+  BusySlot,
+  WorkingHours as SchedulerWorkingHours,
+} from "./types";
 
 // ============================================================================
 // TYPE ALIASES - Make Prisma types more expressive
@@ -76,9 +76,10 @@ export interface SchedulingContext {
  * Use this to create new calendar events for scheduled tasks.
  */
 export interface SchedulingResult {
-  scheduledTaskIds: string[];     // Tasks that got scheduled
-  unscheduledTaskIds: string[];   // Tasks that couldn't fit
-  events: Array<{                 // New calendar events to create
+  scheduledTaskIds: string[]; // Tasks that got scheduled
+  unscheduledTaskIds: string[]; // Tasks that couldn't fit
+  events: Array<{
+    // New calendar events to create
     taskId: string;
     start: Date;
     end: Date;
@@ -100,13 +101,13 @@ export interface SchedulingResult {
 
 /**
  * Convert a Prisma Task to a scheduler ValidatedTask.
- * 
+ *
  * Handles:
  * - Priority normalization (1-10 in DB -> 0-1 for scheduler)
  * - Complexity normalization (1-10 in DB -> 0-1 for scheduler)
  * - Default duration (60 minutes if not set)
  * - Deadline conversion (due date -> ISO string)
- * 
+ *
  * @param task - Task from Prisma database
  * @returns Scheduler-ready task
  */
@@ -123,10 +124,10 @@ export function taskToSchedulerTask(task: SchedulableTask): ValidatedTask {
 
 /**
  * Convert a Prisma Event to a scheduler BusySlot.
- * 
+ *
  * Busy slots represent time that's already occupied (meetings, events, etc).
  * Tasks cannot be scheduled during these times.
- * 
+ *
  * @param event - Event from Prisma database
  * @returns Busy slot for scheduler
  */
@@ -140,14 +141,14 @@ export function eventToBusySlot(event: SchedulableEvent): BusySlot {
 
 /**
  * Convert Prisma WorkingPreferences to scheduler WorkingHours array.
- * 
+ *
  * Returns an array of 7 WorkingHours objects (Monday-Sunday).
  * Working days use the user's earliest/latest times.
  * Non-working days have 00:00-00:00 (no available time).
- * 
+ *
  * @param preferences - User's working preferences from database
  * @returns Array of 7 WorkingHours (Mon-Sun)
- * 
+ *
  * @example
  * ```typescript
  * // User works Mon-Fri, 9am-5pm
@@ -165,10 +166,10 @@ export function eventToBusySlot(event: SchedulableEvent): BusySlot {
  * ```
  */
 export function preferencesToWorkingHours(
-  preferences: WorkingPreferences
+  preferences: WorkingPreferences,
 ): SchedulerWorkingHours[] {
   const workingDays = preferences.workingDays as Weekday[];
-  
+
   const earliestTime = dateToTimeString(preferences.earliestTime);
   const latestTime = dateToTimeString(preferences.latestTime);
 
@@ -194,15 +195,15 @@ export function preferencesToWorkingHours(
 
 /**
  * Extract energy profile from WorkingPreferences.
- * 
+ *
  * Energy profile represents the user's alertness/energy level for each hour
  * of the day (0-23). Complex tasks should be scheduled during high-energy hours.
- * 
+ *
  * Returns an array of 24 numbers (0-1) representing energy for each hour.
- * 
+ *
  * @param preferences - User's working preferences from database
  * @returns Array of 24 energy levels (0-1)
- * 
+ *
  * @example
  * ```typescript
  * const energyProfile = preferencesToEnergyProfile(preferences);
@@ -211,17 +212,21 @@ export function preferencesToWorkingHours(
  * // Low energy early morning, peak mid-morning, decline in evening
  * ```
  */
-export function preferencesToEnergyProfile(preferences: WorkingPreferences): number[] {
+export function preferencesToEnergyProfile(
+  preferences: WorkingPreferences,
+): number[] {
   const profile = preferences.alertnessByHour as number[];
-  
+
   // Ensure we have exactly 24 values
   if (profile && Array.isArray(profile) && profile.length === 24) {
     return profile;
   }
-  
+
   // Default to balanced profile if not set
   // Higher energy during typical working hours (9am-5pm)
-  return Array(24).fill(0).map((_, h) => (h >= 9 && h <= 17 ? 0.75 : 0.55));
+  return Array(24)
+    .fill(0)
+    .map((_, h) => (h >= 9 && h <= 17 ? 0.75 : 0.55));
 }
 
 // ============================================================================
@@ -251,8 +256,8 @@ function normalizeComplexity(complexity: number | null): number {
  * Uses UTC time components.
  */
 function dateToTimeString(date: Date): string {
-  const hours = date.getUTCHours().toString().padStart(2, '0');
-  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+  const hours = date.getUTCHours().toString().padStart(2, "0");
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
@@ -272,4 +277,3 @@ function indexToWeekday(index: number): Weekday {
   ];
   return weekdays[index]!;
 }
-
