@@ -31,7 +31,7 @@ export default function AuthShell({ path }: { path: string }) {
       {/* Kopf: Logo + Home-Link minimal */}
       <header className="absolute left-0 right-0 top-0 mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm text-white/80">
         <div className="flex items-center gap-2">
-          <Image src="/campusclock.png" alt="CampusClock" width={24} height={24} priority />
+          <Image src="/Icon_Gradient.svg" alt="CampusClock" width={24} height={24} priority />
           <span className="font-medium tracking-tight text-white/90">CampusClock</span>
         </div>
         <Link href="/" className="hover:text-white">Back to home</Link>
@@ -74,7 +74,7 @@ export default function AuthShell({ path }: { path: string }) {
       {/* Footer kompakt */}
       <footer className="absolute bottom-0 left-0 right-0 mx-auto mb-4 flex max-w-7xl items-center justify-between px-4 text-xs text-white/60">
         <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="CampusClock" width={18} height={18} />
+          <Image src="/Icon_Gradient.svg" alt="CampusClock" width={18} height={18} />
           <span>© {new Date().getFullYear()} CampusClock</span>
         </div>
         <div className="flex items-center gap-4">

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { RiCalendarView, RiCheckLine, RiTodoLine } from "@remixicon/react";
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
 
@@ -45,11 +46,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       className="dark scheme-only-dark max-lg:p-3 lg:pe-1"
     >
       <SidebarHeader>
-        <div className="flex items-center justify-center gap-2">
-          <Link className="inline-flex" href="/dashboard">
-            <span className="text-xl font-extrabold">CampusClock</span>
-          </Link>
-        </div>
+        <Link href="/dashboard">
+          <table className="border-collapse">
+        <tbody>
+          <tr>
+        <td className="p-2">
+          <Image src="/Icon_Gradient.svg" alt="CampusClock" width={24} height={24} priority />
+        </td>
+        <td className="p-2">
+          <span className="text-xl font-extrabold">CampusClock</span>
+        </td>
+          </tr>
+        </tbody>
+          </table>
+        </Link>
       </SidebarHeader>
       <SidebarContent className="mt-3 gap-0 border-t pt-3">
         <SidebarGroup className="px-1">
