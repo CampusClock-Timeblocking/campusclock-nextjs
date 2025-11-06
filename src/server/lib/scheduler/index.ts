@@ -132,8 +132,6 @@ export type {
 // ============================================================================
 
 export type {
-  SchedulableTask,
-  SchedulableEvent,
   UserSchedulingPreferences,
   SchedulingContext,
   SchedulingResult,

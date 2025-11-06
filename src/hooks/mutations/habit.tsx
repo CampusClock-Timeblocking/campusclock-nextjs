@@ -1,5 +1,5 @@
 "use client";
-import type { FrontendUpdateHabitInput, UpdateHabitInput } from "@/lib/zod";
+import type { FrontendUpdateHabitInput } from "@/lib/zod";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 

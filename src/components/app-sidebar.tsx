@@ -18,20 +18,10 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import SidebarCalendar from "@/components/sidebar-calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { usePathname } from "next/navigation";
-
-const data = {
-  user: {
-    name: "Sofia Safier",
-    email: "sofia@safier.com",
-    avatar:
-      "https://raw.githubusercontent.com/origin-space/origin-images/refs/heads/main/exp6/user-01_l4if9t.png",
-  },
-};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { calendars, isCalendarVisible, toggleCalendarVisibility } =

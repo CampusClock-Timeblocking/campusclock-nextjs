@@ -90,24 +90,15 @@ export function useUpdateEventMutation({ startDate, endDate }: QueryInput) {
                 ? {
                     ...event,
                     title: updatedEvent.title ?? event.title,
-                    description:
-                      updatedEvent.description !== undefined
-                        ? updatedEvent.description
-                        : event.description,
+                    description: updatedEvent.description ?? event.description,
                     start:
                       (updatedEvent.start as Date | undefined) ?? event.start,
                     end: (updatedEvent.end as Date | undefined) ?? event.end,
                     allDay: updatedEvent.allDay ?? event.allDay,
                     color: updatedEvent.color ?? event.color,
-                    location:
-                      updatedEvent.location !== undefined
-                        ? updatedEvent.location
-                        : event.location,
+                    location: updatedEvent.location ?? event.location,
                     calendarId: updatedEvent.calendarId ?? event.calendarId,
-                    taskId:
-                      updatedEvent.taskId !== undefined
-                        ? updatedEvent.taskId
-                        : event.taskId,
+                    taskId: updatedEvent.taskId ?? event.taskId,
                   }
                 : event,
             ),

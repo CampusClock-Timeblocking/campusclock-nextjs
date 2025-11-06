@@ -1,7 +1,5 @@
 import OpenAI from "openai";
 import { env } from "@/env";
-import { get } from "http";
-import { getTaskInferencePrompt } from "./infer-prompts";
 
 let openaiClient: OpenAI | null = null;
 
@@ -11,11 +9,9 @@ export function getOpenAIClient(): OpenAI | null {
     return null;
   }
 
-  if (!openaiClient) {
-    openaiClient = new OpenAI({
-      apiKey: env.OPENAI_API_KEY,
-    });
-  }
+  openaiClient ??= new OpenAI({
+    apiKey: env.OPENAI_API_KEY,
+  });
 
   return openaiClient;
 }

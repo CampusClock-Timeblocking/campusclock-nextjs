@@ -47,7 +47,7 @@ export function UpdateHabitDialog({ habit }: EditProps) {
       : undefined,
     customRule:
       habit.customRule && typeof habit.customRule === "object"
-        ? (habit.customRule as Record<string, any>)
+        ? (habit.customRule as Record<string, unknown>)
         : undefined,
   };
 

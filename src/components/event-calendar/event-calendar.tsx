@@ -41,7 +41,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { type CalendarEvent, type CalendarView } from "./types";
+import { type CalendarEvent } from "./types";
 import {
   AgendaDaysToShow,
   EventGap,
@@ -152,7 +152,7 @@ export function EventCalendar({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isEventDialogOpen]);
+  }, [isEventDialogOpen, view, setView]);
 
   const handlePrevious = () => {
     if (view === "month") {
@@ -491,8 +491,6 @@ export function EventCalendar({
               onEventSelect={handleEventSelect}
               onEventCreate={handleEventCreate}
               readOnlyCalendarIds={readOnlyCalendarIds}
-              hoveredSlot={hoveredSlot}
-              onSlotHover={setHoveredSlot}
             />
           )}
           {view === "week" && (

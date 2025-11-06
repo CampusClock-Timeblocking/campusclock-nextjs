@@ -9,7 +9,7 @@ export const parseDuration = (value: string): number | null => {
   const trimmed = value.trim().toLowerCase();
 
   // Handle formats like "1h35m" or "1h 35m"
-  const combinedMatch = trimmed.match(/^(\d+)h\s*(\d+)m$/);
+  const combinedMatch = /^(\d+)h\s*(\d+)m$/.exec(trimmed);
   if (combinedMatch) {
     const hours = parseInt(combinedMatch[1] ?? "");
     const minutes = parseInt(combinedMatch[2] ?? "");

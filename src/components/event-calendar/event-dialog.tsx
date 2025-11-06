@@ -9,16 +9,7 @@ import {
   RiMapPinLine,
   RiFileTextLine,
 } from "@remixicon/react";
-import {
-  CircleCheck,
-  CircleDashed,
-  CircleOff,
-  Loader,
-  Pause,
-  RedoDot,
-  SkipForward,
-  ChevronDown,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 
 import type { CalendarEvent } from "@/components/event-calendar/event-calendar";
@@ -71,7 +62,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { StartHour, EndHour } from "@/components/event-calendar/constants";
 import { api } from "@/trpc/react";
 import { useUpdateTaskMutation } from "@/hooks/mutations/task";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { TaskStatus } from "@prisma/client";
 import {
@@ -107,11 +97,10 @@ export function EventDialog({
   const { calendars } = useCalendarContext();
 
   // Fetch task data if event is linked to a task
-  const { data: taskData, isLoading: isLoadingTask } =
-    api.task.getById.useQuery(
-      { id: displayEvent?.taskId ?? "" },
-      { enabled: !!displayEvent?.taskId },
-    );
+  const { data: taskData } = api.task.getById.useQuery(
+    { id: displayEvent?.taskId ?? "" },
+    { enabled: !!displayEvent?.taskId },
+  );
 
   // Update task mutation
   const updateTaskMutation = useUpdateTaskMutation({
@@ -166,9 +155,10 @@ export function EventDialog({
 
     try {
       await updateTaskMutation.mutateAsync({ status: newStatus });
-      toast.success(`Task status updated`);
+      toast.success("Task status updated");
     } catch (error) {
       toast.error("Failed to update task status");
+      console.error(error);
     }
   };
 

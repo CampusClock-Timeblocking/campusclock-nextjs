@@ -33,24 +33,6 @@ import type {
 // ============================================================================
 
 /**
- * A task from the database that can be scheduled.
- * Extends the base Prisma Task type.
- */
-export interface SchedulableTask extends Task {
-  // Task already has all fields we need from Prisma:
-  // - id, priority, durationMinutes, due (deadline), complexity
-}
-
-/**
- * An event from the database that blocks time on the calendar.
- * Extends the base Prisma Event type.
- */
-export interface SchedulableEvent extends Event {
-  // Event already has all fields we need:
-  // - id, start, end
-}
-
-/**
  * User's scheduling preferences from the database.
  * Combines working preferences and scheduling configuration.
  */
@@ -64,8 +46,8 @@ export interface UserSchedulingPreferences {
  * Fetch all of this from the database, then pass to scheduler.
  */
 export interface SchedulingContext {
-  tasks: SchedulableTask[];
-  events: SchedulableEvent[];
+  tasks: Task[];
+  events: Event[];
   preferences: UserSchedulingPreferences;
   baseDate?: Date;
   currentTime?: Date;
@@ -111,7 +93,7 @@ export interface SchedulingResult {
  * @param task - Task from Prisma database
  * @returns Scheduler-ready task
  */
-export function taskToSchedulerTask(task: SchedulableTask): ValidatedTask {
+export function taskToSchedulerTask(task: Task): ValidatedTask {
   return {
     id: task.id,
     priority: normalizePriority(task.priority),
@@ -131,7 +113,7 @@ export function taskToSchedulerTask(task: SchedulableTask): ValidatedTask {
  * @param event - Event from Prisma database
  * @returns Busy slot for scheduler
  */
-export function eventToBusySlot(event: SchedulableEvent): BusySlot {
+export function eventToBusySlot(event: Event): BusySlot {
   return {
     start: event.start.toISOString(),
     end: event.end.toISOString(),
@@ -168,7 +150,7 @@ export function eventToBusySlot(event: SchedulableEvent): BusySlot {
 export function preferencesToWorkingHours(
   preferences: WorkingPreferences,
 ): SchedulerWorkingHours[] {
-  const workingDays = preferences.workingDays as Weekday[];
+  const workingDays = preferences.workingDays ?? [];
 
   const earliestTime = dateToTimeString(preferences.earliestTime);
   const latestTime = dateToTimeString(preferences.latestTime);
@@ -215,7 +197,7 @@ export function preferencesToWorkingHours(
 export function preferencesToEnergyProfile(
   preferences: WorkingPreferences,
 ): number[] {
-  const profile = preferences.alertnessByHour as number[];
+  const profile = preferences.alertnessByHour ?? [];
 
   // Ensure we have exactly 24 values
   if (profile && Array.isArray(profile) && profile.length === 24) {

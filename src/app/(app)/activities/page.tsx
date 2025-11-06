@@ -13,13 +13,13 @@ import { CreateHabitDialog } from "@/components/item-dialogs/dialogs/habit";
 import { HabitView } from "@/components/datatable/views/habit-view";
 import { habitColumns } from "@/components/datatable/columns/habit-columns";
 import { TitlePage } from "@/components/basic-components/page-layout";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, Suspense } from "react";
 import { useActiveTab } from "@/components/basic-components/tabs-row";
 import type { TabOption } from "@/components/basic-components/tabs-row";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useOptionKey } from "@/hooks/kbd";
 
-export default function TasksPage() {
+function TasksPageContent() {
   const { data: tasks, isLoading: tasksLoading } = api.task.getAll.useQuery();
   const { data: projects, isLoading: projectsLoading } =
     api.project.getAll.useQuery();
@@ -132,5 +132,13 @@ export default function TasksPage() {
         />
       )}
     </TitlePage>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TasksPageContent />
+    </Suspense>
   );
 }

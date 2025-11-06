@@ -15,11 +15,8 @@ import { DialogContentLayout } from "./layout";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  createTaskInputSchema,
   rawCreateTaskSchema,
-  type CreateTaskInput,
   type FrontendCreateTaskInput,
-  type FrontendUpdateTaskInput,
 } from "@/lib/zod";
 import { DateTimePicker } from "../../date-time-picker";
 import type {
@@ -94,7 +91,7 @@ export const TaskDialogContent: React.FC<Props> = ({
 
   const { data: projects, isLoading } = api.project.getAll.useQuery();
 
-  useShiftEnter(handleFormSubmit);
+  useShiftEnter(() => void handleFormSubmit());
 
   return (
     <DialogContentLayout

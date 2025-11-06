@@ -41,12 +41,10 @@ export function useEventVisibility({
     updateHeight();
 
     // Create observer only once and reuse it
-    if (!observerRef.current) {
-      observerRef.current = new ResizeObserver(() => {
-        // Just call updateHeight when resize is detected
-        updateHeight();
-      });
-    }
+    observerRef.current ??= new ResizeObserver(() => {
+      // Just call updateHeight when resize is detected
+      updateHeight();
+    });
 
     // Start observing the content container
     observerRef.current.observe(contentRef.current);

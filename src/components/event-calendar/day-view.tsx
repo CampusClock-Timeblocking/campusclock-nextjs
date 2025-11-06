@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef } from "react";
 import {
+  addDays,
   addHours,
   areIntervalsOverlapping,
   differenceInMinutes,
@@ -52,7 +53,6 @@ export function DayView({
   onEventCreate,
   readOnlyCalendarIds = new Set(),
   hoveredSlot,
-  onSlotHover,
 }: DayViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -85,6 +85,14 @@ export function DayView({
       .filter((event) => {
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
+        // For all-day events, the end date is exclusive
+        if (event.allDay) {
+          return (
+            isSameDay(currentDate, eventStart) ||
+            (currentDate > eventStart && currentDate < eventEnd)
+          );
+        }
+        // For timed events, include both start and end dates
         return (
           isSameDay(currentDate, eventStart) ||
           isSameDay(currentDate, eventEnd) ||
@@ -161,7 +169,7 @@ export function DayView({
       let placed = false;
 
       while (!placed) {
-        const col = columns[columnIndex] || [];
+        const col = columns[columnIndex] ?? [];
         if (col.length === 0) {
           columns[columnIndex] = col;
           placed = true;
@@ -181,7 +189,7 @@ export function DayView({
       }
 
       // Ensure column is initialized before pushing
-      const currentColumn = columns[columnIndex] || [];
+      const currentColumn = columns[columnIndex] ?? [];
       columns[columnIndex] = currentColumn;
       currentColumn.push({ event, end: adjustedEnd });
 
@@ -243,7 +251,10 @@ export function DayView({
                 const eventStart = new Date(event.start);
                 const eventEnd = new Date(event.end);
                 const isFirstDay = isSameDay(currentDate, eventStart);
-                const isLastDay = isSameDay(currentDate, eventEnd);
+                // For all-day events, end date is exclusive, so the last visible day is the day before eventEnd
+                const isLastDay = event.allDay 
+                  ? isSameDay(addDays(currentDate, 1), eventEnd)
+                  : isSameDay(currentDate, eventEnd);
 
                 return (
                   <EventItem
@@ -368,12 +379,7 @@ export function DayView({
                         startTime.setMinutes(quarter * 15);
                         onEventCreate(startTime);
                       }}
-                      onHover={(date, time) => {
-                        onSlotHover?.({ date, time });
-                      }}
-                      onHoverEnd={() => {
-                        onSlotHover?.(null);
-                      }}
+                     
                     />
                   );
                 })}

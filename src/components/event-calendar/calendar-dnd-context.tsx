@@ -153,9 +153,9 @@ export function CalendarDndProvider({
     setActiveId(active.id);
     setActiveView(view);
     setCurrentTime(new Date(calendarEvent.start));
-    setIsMultiDay(eventIsMultiDay || false);
-    setMultiDayWidth(eventMultiDayWidth || null);
-    setDragHandlePosition(eventDragHandlePosition || null);
+    setIsMultiDay(eventIsMultiDay ?? false);
+    setMultiDayWidth(eventMultiDayWidth ?? null);
+    setDragHandlePosition(eventDragHandlePosition ?? null);
 
     // Store event height if provided
     if (height) {
@@ -361,7 +361,7 @@ export function CalendarDndProvider({
                 view={activeView}
                 isDragging={true}
                 showTime={activeView !== "month"}
-                currentTime={currentTime || undefined}
+                currentTime={currentTime ?? undefined}
                 isFirstDay={dragHandlePosition?.data?.isFirstDay !== false}
                 isLastDay={dragHandlePosition?.data?.isLastDay !== false}
               />

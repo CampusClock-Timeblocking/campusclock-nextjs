@@ -85,7 +85,7 @@ export const habitColumns: ColumnDef<Habit>[] = [
     ),
     cell: ({ row }) => {
       const interval = row.original.interval;
-      const recurrenceType = row.original.recurrenceType as PeriodUnit;
+      const recurrenceType = row.original.recurrenceType;
       const unit = recurrenceType.toLowerCase();
       return (
         <div className="text-sm">

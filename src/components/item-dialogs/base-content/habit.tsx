@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
@@ -15,7 +14,6 @@ import { DialogContentLayout } from "./layout";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  createHabitInputSchema,
   rawCreateHabitSchema,
   type CreateHabitInput,
   type FrontendCreateHabitInput,
@@ -96,7 +94,7 @@ export const HabitDialogContent: React.FC<Props> = ({
     });
   });
 
-  useShiftEnter(handleFormSubmit);
+  useShiftEnter(() => void handleFormSubmit());
 
   return (
     <DialogContentLayout
