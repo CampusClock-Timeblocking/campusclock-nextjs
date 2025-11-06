@@ -65,7 +65,7 @@ export default function AuthShell({ path }: { path: string }) {
 
         {/* Kleine, klare CTAs darunter */}
         <div className="mx-auto mt-4 flex w-full max-w-md items-center justify-between text-xs text-white/70">
-          <Link href="/auth/sign-up" className="hover:text-white">Terms of Service</Link>
+          <Link href="/terms" className="hover:text-white">Terms of Service</Link>
           <Link href="/privacy" className="hover:text-white">Privacy</Link>
         </div>
         </section>
