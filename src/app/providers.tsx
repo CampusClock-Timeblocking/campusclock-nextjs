@@ -35,6 +35,13 @@ export function Providers({ children }: { children: ReactNode }) {
         credentials={false}
         social={{
           providers: ["google"],
+          signIn: async (params) => {
+            return authClient.signIn.social({
+              ...params,
+              callbackURL: "/dashboard",
+              newUserCallbackURL: "/onboarding",
+            });
+          },
         }}
       >
         <ConfirmationDialogProvider>
