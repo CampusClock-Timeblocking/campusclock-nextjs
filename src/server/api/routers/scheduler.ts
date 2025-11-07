@@ -206,25 +206,64 @@ export const schedulerRouter = createTRPCRouter({
    */
   checkSolverHealth: protectedProcedure.query(async () => {
     const solverUrl = env.SOLVER_SERVICE_URL ?? "http://localhost:8000";
+    const healthUrl = `${solverUrl}/health`;
+
+    console.log("🔍 [Health Check] Starting solver health check");
+    console.log("🔍 [Health Check] Solver URL:", solverUrl);
+    console.log("🔍 [Health Check] Health endpoint:", healthUrl);
+    console.log("🔍 [Health Check] Timeout: 10000ms");
+
+    const startTime = Date.now();
 
     try {
-      const response = await fetch(`${solverUrl}/health`, {
+      console.log("🔍 [Health Check] Initiating fetch request...");
+      
+      const response = await fetch(healthUrl, {
         method: "GET",
         signal: AbortSignal.timeout(10000), // Increased to 10 seconds for containerized environments
       });
 
+      const elapsed = Date.now() - startTime;
+      console.log(`🔍 [Health Check] Response received in ${elapsed}ms`);
+      console.log("🔍 [Health Check] Status:", response.status);
+      console.log("🔍 [Health Check] Status text:", response.statusText);
+
       if (!response.ok) {
+        console.error(
+          `❌ [Health Check] Solver returned non-OK status: ${response.status}`,
+        );
         return {
           available: false,
           error: `Solver returned status ${response.status}`,
         };
       }
 
+      console.log("✅ [Health Check] Solver is healthy");
       return {
         available: true,
         url: solverUrl,
       };
     } catch (error) {
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ [Health Check] Failed after ${elapsed}ms`);
+      console.error("❌ [Health Check] Error type:", error?.constructor?.name);
+      console.error("❌ [Health Check] Error message:", error instanceof Error ? error.message : "Unknown error");
+      
+      if (error instanceof Error) {
+        console.error("❌ [Health Check] Error stack:", error.stack);
+        
+        // Additional context for common errors
+        if (error.name === "AbortError") {
+          console.error("❌ [Health Check] Request was aborted (timeout reached)");
+        } else if (error.message.includes("ECONNREFUSED")) {
+          console.error("❌ [Health Check] Connection refused - solver service may not be running");
+        } else if (error.message.includes("ENOTFOUND")) {
+          console.error("❌ [Health Check] DNS lookup failed - check solver service hostname");
+        } else if (error.message.includes("ETIMEDOUT")) {
+          console.error("❌ [Health Check] Connection timed out at TCP level");
+        }
+      }
+
       return {
         available: false,
         error:
