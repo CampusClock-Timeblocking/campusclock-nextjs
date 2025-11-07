@@ -53,7 +53,18 @@ export function getBorderRadiusClasses(
 export function isMultiDayEvent(event: CalendarEvent): boolean {
   const eventStart = new Date(event.start);
   const eventEnd = new Date(event.end);
-  return event.allDay || eventStart.getDate() !== eventEnd.getDate();
+  
+  // For all-day events, the end date is exclusive
+  // A single-day all-day event has end = start + 1 day
+  // So it's only multi-day if end > start + 1 day
+  if (event.allDay) {
+    const dayAfterStart = new Date(eventStart);
+    dayAfterStart.setDate(dayAfterStart.getDate() + 1);
+    return eventEnd > dayAfterStart;
+  }
+  
+  // For timed events, check if they span different dates
+  return !isSameDay(eventStart, eventEnd);
 }
 
 /**
@@ -99,7 +110,22 @@ export function getSpanningEventsForDay(
     const eventStart = new Date(event.start);
     const eventEnd = new Date(event.end);
 
-    // Only include if it's not the start day but is either the end day or a middle day
+    // For all-day events, use exclusive end date logic with normalized dates
+    if (event.allDay) {
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const eventStartDay = new Date(eventStart);
+      eventStartDay.setHours(0, 0, 0, 0);
+      const eventEndDay = new Date(eventEnd);
+      eventEndDay.setHours(0, 0, 0, 0);
+
+      return (
+        dayStart.getTime() !== eventStartDay.getTime() &&
+        (dayStart > eventStartDay && dayStart < eventEndDay)
+      );
+    }
+
+    // For timed multi-day events, include the end day
     return (
       !isSameDay(day, eventStart) &&
       (isSameDay(day, eventEnd) || (day > eventStart && day < eventEnd))
@@ -117,6 +143,23 @@ export function getAllEventsForDay(
   return events.filter((event) => {
     const eventStart = new Date(event.start);
     const eventEnd = new Date(event.end);
+
+    // For all-day events, use exclusive end date logic with normalized dates
+    if (event.allDay) {
+      const dayStart = new Date(day);
+      dayStart.setHours(0, 0, 0, 0);
+      const eventStartDay = new Date(eventStart);
+      eventStartDay.setHours(0, 0, 0, 0);
+      const eventEndDay = new Date(eventEnd);
+      eventEndDay.setHours(0, 0, 0, 0);
+
+      return (
+        dayStart.getTime() === eventStartDay.getTime() ||
+        (dayStart > eventStartDay && dayStart < eventEndDay)
+      );
+    }
+
+    // For timed events
     return (
       isSameDay(day, eventStart) ||
       isSameDay(day, eventEnd) ||
@@ -136,6 +179,23 @@ export function getAgendaEventsForDay(
     .filter((event) => {
       const eventStart = new Date(event.start);
       const eventEnd = new Date(event.end);
+
+      // For all-day events, use exclusive end date logic with normalized dates
+      if (event.allDay) {
+        const dayStart = new Date(day);
+        dayStart.setHours(0, 0, 0, 0);
+        const eventStartDay = new Date(eventStart);
+        eventStartDay.setHours(0, 0, 0, 0);
+        const eventEndDay = new Date(eventEnd);
+        eventEndDay.setHours(0, 0, 0, 0);
+
+        return (
+          dayStart.getTime() === eventStartDay.getTime() ||
+          (dayStart > eventStartDay && dayStart < eventEndDay)
+        );
+      }
+
+      // For timed events
       return (
         isSameDay(day, eventStart) ||
         isSameDay(day, eventEnd) ||

@@ -41,6 +41,7 @@ import { useMemo, useState } from "react";
 import { CalendarFormDialog } from "@/components/calendar-form-dialog";
 import { SectionHeader } from "@/components/basic-components/section-header";
 import { TitlePage } from "@/components/basic-components/page-layout";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CalendarsPage() {
   const utils = api.useUtils();
@@ -156,15 +157,63 @@ export default function CalendarsPage() {
   );
 
   if (calendarQuery.isLoading) {
-    return <div>need to add skeleton</div>;
+    return (
+      <TitlePage title="Calendars" description="Manage your calendars">
+        <div className="space-y-12">
+          {/* Local Calendars Section Skeleton */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-80" />
+              </div>
+              <Skeleton className="h-9 w-32" />
+            </div>
+
+            <div className="space-y-3">
+              {[1].map((i) => (
+                <div
+                  key={i}
+                  className="border-border bg-card flex items-center gap-3 rounded-lg border p-4"
+                >
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-5 w-40 flex-1" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Google Calendars Section Skeleton */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-80" />
+              </div>
+              <Skeleton className="h-9 w-32" />
+            </div>
+
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="border-border bg-card flex items-center gap-3 rounded-lg border p-4"
+                >
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-5 w-48 flex-1" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </TitlePage>
+    );
   }
 
   return (
-    <TitlePage
-      title="Calendars"
-      description="Manage your calendars"
-      className="max-w-6xl"
-    >
+    <TitlePage title="Calendars" description="Manage your calendars">
       <div className="space-y-12">
         {/* Local Calendars Section */}
         {localCalendars && localCalendars.length > 0 && (

@@ -103,14 +103,15 @@ export function WeekView({
         return event.allDay || isMultiDayEvent(event);
       })
       .filter((event) => {
-        const eventStart = new Date(event.start);
-        const eventEnd = new Date(event.end);
+        const eventStart = startOfDay(new Date(event.start));
+        const eventEnd = startOfDay(new Date(event.end));
         return days.some((day) => {
+          const dayStart = startOfDay(day);
           // For all-day events, the end date is exclusive
           if (event.allDay) {
             return (
-              isSameDay(day, eventStart) ||
-              (day > eventStart && day < eventEnd)
+              dayStart.getTime() === eventStart.getTime() ||
+              (dayStart > eventStart && dayStart < eventEnd)
             );
           }
           // For timed multi-day events, include the end day
@@ -280,13 +281,14 @@ export function WeekView({
             </div>
             {days.map((day, dayIndex) => {
               const dayAllDayEvents = allDayEvents.filter((event) => {
-                const eventStart = new Date(event.start);
-                const eventEnd = new Date(event.end);
+                const eventStart = startOfDay(new Date(event.start));
+                const eventEnd = startOfDay(new Date(event.end));
+                const dayStart = startOfDay(day);
                 // For all-day events, the end date is exclusive
                 if (event.allDay) {
                   return (
-                    isSameDay(day, eventStart) ||
-                    (day > eventStart && day < eventEnd)
+                    dayStart.getTime() === eventStart.getTime() ||
+                    (dayStart > eventStart && dayStart < eventEnd)
                   );
                 }
                 // For timed multi-day events, include the end day
