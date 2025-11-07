@@ -65,6 +65,14 @@ export const onboardingRouter = createTRPCRouter({
                 },
             })
 
+            await db.schedulingConfig.upsert({
+                where: { userId },
+                update: {},
+                create: {
+                    userId,
+                },
+            })
+
             return { ok: true }
         }),
 })
