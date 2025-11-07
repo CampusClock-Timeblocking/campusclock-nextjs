@@ -58,7 +58,7 @@ export type Weekday = z.infer<typeof weekdaySchema>;
 // Weekdays for habits (0-6, where 0 is Sunday)
 const habitWeekdaysSchema = z.array(z.number().int().min(0).max(6)).optional();
 const descriptionSchema = z.string().max(2000).optional();
-const prioritySchema = z.int().min(1).max(10);
+const prioritySchema = z.int().min(1).max(5);
 
 /* User Schemas */
 
