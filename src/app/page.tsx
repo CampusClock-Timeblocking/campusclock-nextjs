@@ -6,6 +6,7 @@ import { Clock, ShieldCheck, Zap, LineChart, ArrowRight, Check, Bell } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BorderBeam } from "@/components/ui/border-beam";
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Color system
@@ -55,7 +56,7 @@ export default function Home() {
             <Button asChild className="bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white" style={{
               // feed CSS vars for easier theming
               ['--from' as string]: BRAND.from,
-              ['--via' as string]: BRAND.via,  
+              ['--via' as string]: BRAND.via,
               ['--to' as string]: BRAND.to,
             }}><Link href="/onboarding/welcome">Get started</Link></Button>
           </div>
@@ -80,11 +81,11 @@ export default function Home() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/onboarding/welcome"><Button className="h-14 px-8 bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white text-lg" style={{
-              // feed CSS vars for easier theming
-              ['--from' as string]: BRAND.from,
-              ['--via' as string]: BRAND.via,
-              ['--to' as string]: BRAND.to,
-            }}>Get started</Button></Link>
+                // feed CSS vars for easier theming
+                ['--from' as string]: BRAND.from,
+                ['--via' as string]: BRAND.via,
+                ['--to' as string]: BRAND.to,
+              }}>Get started</Button></Link>
             </div>
 
             <div className="mt-6 flex items-center gap-4 text-xs text-white/60">
@@ -136,30 +137,54 @@ export default function Home() {
 
       {/* SOCIAL PROOF */}
       <section className="mx-auto max-w-7xl px-4 pb-24">
-          <Card className="border-white/10 bg-white/5 max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">90‑sec tour</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40" />
-            </CardContent>
-          </Card>
+        <Card className="border-white/10 bg-white/5 max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">90‑sec tour</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40" />
+          </CardContent>
+        </Card>
       </section>
 
       {/* CTA */}
-      <section className="relative mx-auto max-w-7xl px-4 pb-28">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r p-[1px]" style={{ backgroundImage: `linear-gradient(90deg, ${BRAND.from}, ${BRAND.via}, ${BRAND.to})` }}>
-          <div className="rounded-[calc(theme(borderRadius.3xl)-1px)] bg-black/70 p-8 md:p-12">
-            <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-              <div>
-                <h3 className="text-2xl font-semibold md:text-3xl">Build your best week yet</h3>
-                <p className="mt-2 max-w-prose text-white/80">Link your calendar, pick your energy curve, and watch your schedule click.</p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button size="lg" className="py-6 px-8 text-base font-semibold" asChild>
-                  <Link href="/auth/sign-up">Create free account <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                </Button>
-              </div>
+      <section className="mx-auto max-w-7xl px-4 pb-28 relative"
+        style={{
+          ['--brand-from' as string]: BRAND.from,
+          ['--brand-via' as string]: BRAND.via,
+          ['--brand-to' as string]: BRAND.to,
+        }}>
+        <div className="rounded-3xl bg-black/70 p-8 md:p-12 relative overflow-hidden">
+          <BorderBeam
+            duration={20}
+            size={400}
+            borderWidth={2}
+            style={{
+              ['--color-from' as string]: 'var(--brand-from)',
+              ['--color-to' as string]: 'var(--brand-via)',
+            }}
+            className="from-transparent via-[var(--brand-via)] to-transparent"
+          />
+          <BorderBeam
+            duration={20}
+            delay={10}
+            size={400}
+            borderWidth={2}
+            style={{
+              ['--color-from' as string]: 'var(--brand-via)',
+              ['--color-to' as string]: 'var(--brand-to)',
+            }}
+            className="from-transparent via-[var(--brand-to)] to-transparent"
+          />
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <h3 className="text-2xl font-semibold md:text-3xl">Build your best week yet</h3>
+              <p className="mt-2 max-w-prose text-white/80">Link your calendar, pick your energy curve, and watch your schedule click.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button size="lg" className="py-6 px-8 text-base font-semibold" asChild>
+                <Link href="/auth/sign-up">Create free account <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -224,7 +249,7 @@ function StepCard({ step, title, desc }: { step: number; title: string; desc: st
 
 // A lightweight, illustrative calendar mock (pure JSX/CSS) to avoid bundling heavy libs here
 function MockCalendar() {
-  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
