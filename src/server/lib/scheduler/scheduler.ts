@@ -69,17 +69,9 @@ export class EnhancedScheduler {
   private readonly maxExtensions: number;
 
   constructor(options: EnhancedSchedulerOptions) {
-    console.log("🔧 [EnhancedScheduler] Initializing enhanced scheduler");
-    console.log("🔧 [EnhancedScheduler] Base URL:", options.baseUrl);
-    console.log("🔧 [EnhancedScheduler] Timeout:", options.timeoutMs ?? 5000, "ms");
-    console.log("🔧 [EnhancedScheduler] Success threshold:", options.successThreshold ?? 0.8);
-    console.log("🔧 [EnhancedScheduler] Max horizon extensions:", options.maxHorizonExtensions ?? 7);
-    
     this.solverClient = new SolverClient(options);
     this.successThreshold = options.successThreshold ?? 0.8;
     this.maxExtensions = options.maxHorizonExtensions ?? 7;
-    
-    console.log("✅ [EnhancedScheduler] Enhanced scheduler initialized");
   }
 
   /**

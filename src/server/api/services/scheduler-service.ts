@@ -18,7 +18,6 @@ import { EventService } from "./event-service";
 import { PreferencesService } from "./preferences-service";
 import { CalendarService } from "./calendar-service";
 import { env } from "@/env";
-
 export class SchedulerService {
   private scheduler: EnhancedScheduler;
   private eventService: EventService;
@@ -26,27 +25,16 @@ export class SchedulerService {
   private calendarService: CalendarService;
 
   constructor(private db: PrismaClient) {
-    const solverUrl = env.SOLVER_SERVICE_URL;
-    const timeoutMs = parseInt(env.SOLVER_TIMEOUT_MS ?? "10000", 10);
-    
-    console.log("🔧 [SchedulerService] Initializing scheduler service");
-    console.log("🔧 [SchedulerService] Solver URL:", solverUrl);
-    console.log("🔧 [SchedulerService] Timeout:", timeoutMs, "ms");
-    console.log("🔧 [SchedulerService] Success threshold: 0.8");
-    console.log("🔧 [SchedulerService] Max horizon extensions: 7");
-    
     // Initialize the scheduler with environment variables
     this.scheduler = new EnhancedScheduler({
-      baseUrl: solverUrl,
-      timeoutMs: timeoutMs,
+      baseUrl: env.SOLVER_SERVICE_URL,
+      timeoutMs: parseInt(process.env.SOLVER_TIMEOUT_MS ?? "10000", 10),
       successThreshold: 0.8,
       maxHorizonExtensions: 7,
     });
     this.eventService = new EventService(db);
     this.preferencesService = new PreferencesService(db);
     this.calendarService = new CalendarService(db);
-    
-    console.log("✅ [SchedulerService] Scheduler service initialized");
   }
 
   /**
