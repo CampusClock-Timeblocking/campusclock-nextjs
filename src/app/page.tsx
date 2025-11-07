@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
-import { Clock, Sparkles, ShieldCheck, Zap, LineChart, ArrowRight, Check, Youtube, Bell } from "lucide-react";
+import { Clock, ShieldCheck, Zap, LineChart, ArrowRight, Check, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { authClient } from "@/lib/auth-client";
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Color system
@@ -28,12 +26,8 @@ const BRAND = {
 };
 
 export default function Home() {
-  const requestGoogleCalendarAccess = async () => {
-    await authClient.linkSocial({ provider: "google", scopes: ["https://www.googleapis.com/auth/calendar"] });
-  };
-
   return (
-    <main className="min-h-[100dvh] bg-black text-white">
+    <main className="min-h-[100dvh] text-foreground overflow-x-hidden">
       {/* Background gradient + glow */}
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-90"
@@ -41,33 +35,29 @@ export default function Home() {
           background:
             `radial-gradient(60% 60% at 50% 0%, ${BRAND.from}11 0%, transparent 60%),` +
             `radial-gradient(40% 40% at 90% 20%, ${BRAND.to}14 0%, transparent 60%),` +
-            `linear-gradient(180deg, #07070C 0%, #05050A 100%)`,
+            `linear-gradient(180deg, #07070C 0%, #1c1d22 100%)`,
         }}
       />
 
       {/* NAV */}
-      <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-black/40">
+      <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            {/* Replace with your real logo and set sizes */}
-            <Image src="/campusclock.png" alt="CampusClock" width={36} height={36} priority />
-            <span className="text-lg font-semibold tracking-tight">CampusClock</span>
+          <div className="flex items-baseline gap-3">
+            <span className="text-lg tracking-tight font-semibold">CampusClock</span>
             <Badge variant="secondary" className="ml-2 bg-white/10 text-white">Beta</Badge>
           </div>
           <nav className="hidden items-center gap-6 md:flex">
             <Link href="#features" className="text-sm text-white/80 hover:text-white">Features</Link>
-            <Link href="#how" className="text-sm text-white/80 hover:text-white">How it works</Link>
-            <Link href="#integrations" className="text-sm text-white/80 hover:text-white">Integrations</Link>
-            <Link href="#faq" className="text-sm text-white/80 hover:text-white">FAQ</Link>
+            <Link href="#setup" className="text-sm text-white/80 hover:text-white">How it works</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/auth/sign-in"><Button variant="ghost" className="text-white">Log in</Button></Link>
-            <Link href="/onboarding/welcome"><Button className="bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white" style={{
+            <Button variant="ghost" className="text-white" asChild><Link href="/auth/sign-in">Log in</Link></Button>
+            <Button asChild className="bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white" style={{
               // feed CSS vars for easier theming
               ['--from' as string]: BRAND.from,
-              ['--via' as string]: BRAND.via,
+              ['--via' as string]: BRAND.via,  
               ['--to' as string]: BRAND.to,
-            }}>Get started</Button></Link>
+            }}><Link href="/onboarding/welcome">Get started</Link></Button>
           </div>
         </div>
       </header>
@@ -131,10 +121,10 @@ export default function Home() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section id="how" className="mx-auto max-w-7xl px-4 pb-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
+      <section id="setup" className="mx-auto max-w-7xl px-4 pb-16">
+        <div className="mb-6 flex items-baseline justify-between gap-4">
           <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">How it works</h2>
-          <Link href="/auth/sign-up" className="text-sm text-white/80 hover:text-white">Create free account →</Link>
+          <Button variant="link" asChild><Link href="/auth/sign-up" className="text-sm text-white/80 hover:text-white">Create free account <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
         </div>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <StepCard step={1} title="Connect" desc="Link Google Calendar in one click. We’ll import events and keep everything in sync." />
@@ -143,49 +133,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* INTEGRATIONS */}
-      <section id="integrations" className="mx-auto max-w-7xl px-4 pb-20">
-        <Card className="border-white/10 bg-white/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white/90">
-              <Sparkles className="h-5 w-5" /> Plays nice with your stack
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <IntegrationPill label="Google Calendar" />
-              <IntegrationPill label="Apple Calendar (ICS)" />
-              <IntegrationPill label="Notion Tasks" />
-              <IntegrationPill label="Microsoft 365 (soon)" />
-            </div>
-          </CardContent>
-          <CardFooter className="text-sm text-white/70">Need another integration? <Link href="/contact" className="underline-offset-2 hover:underline">Tell us</Link>.</CardFooter>
-        </Card>
-      </section>
 
       {/* SOCIAL PROOF */}
       <section className="mx-auto max-w-7xl px-4 pb-24">
-        <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
-          <Card className="border-white/10 bg-white/5">
+          <Card className="border-white/10 bg-white/5 max-w-2xl mx-auto">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Youtube className="h-5 w-5" /> 90‑sec tour</CardTitle>
+              <CardTitle className="flex items-center gap-2">90‑sec tour</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40" />
             </CardContent>
           </Card>
-
-          <Card className="border-white/10 bg-white/5">
-            <CardHeader>
-              <CardTitle>What students say</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-white/80">
-              <Testimonial text="Finally a planner that adapts when profs move deadlines. My week stays sane." name="Miriam • B.Sc. WiInf" />
-              <Testimonial text="The energy‑blocks are game‑changing. I schedule deep work when I’m actually sharp." name="Jonas • CS" />
-              <Testimonial text="Sync is instant. Blocks feel ‘alive’ instead of static boxes." name="Sofia • Design" />
-            </CardContent>
-          </Card>
-        </div>
       </section>
 
       {/* CTA */}
@@ -195,13 +153,12 @@ export default function Home() {
             <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
               <div>
                 <h3 className="text-2xl font-semibold md:text-3xl">Build your best week yet</h3>
-                <p className="mt-2 max-w-prose text-white/80">Start free. Link your calendar, pick your energy curve, and watch your schedule click.</p>
+                <p className="mt-2 max-w-prose text-white/80">Link your calendar, pick your energy curve, and watch your schedule click.</p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button size="lg" className="h-12 px-6 text-base font-semibold" onClick={requestGoogleCalendarAccess}>
-                  Try with Google <ArrowRight className="ml-2 h-4 w-4" />
+                <Button size="lg" className="py-6 px-8 text-base font-semibold" asChild>
+                  <Link href="/auth/sign-up">Create free account <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </Button>
-                <Link href="/auth/sign-up"><Button size="lg" variant="secondary" className="h-12 px-6 text-base">Create account</Button></Link>
               </div>
             </div>
           </div>
@@ -209,16 +166,15 @@ export default function Home() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/10 bg-black/40 py-10">
+      <footer className="border-t border-white/10 bg-background/40 py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 md:flex-row">
           <div className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="CampusClock" width={24} height={24} />
             <span className="text-sm text-white/70">© {new Date().getFullYear()} CampusClock</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-white/70">
-            <Link href="/imprint" className="hover:text-white">Imprint</Link>
-            <Link href="/privacy" className="hover:text-white">Privacy</Link>
-            <Link href="/terms" className="hover:text-white">Terms</Link>
+            <Link href="#" className="hover:text-white">Imprint</Link>
+            <Link href="#" className="hover:text-white">Privacy</Link>
+            <Link href="#" className="hover:text-white">Terms</Link>
           </div>
         </div>
       </footer>
@@ -265,22 +221,6 @@ function StepCard({ step, title, desc }: { step: number; title: string; desc: st
   );
 }
 
-function IntegrationPill({ label }: { label: string }) {
-  return (
-    <div className="flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
-      {label}
-    </div>
-  );
-}
-
-function Testimonial({ text, name }: { text: string; name: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-black/40 p-3">
-      <p className="text-white/90">“{text}”</p>
-      <p className="mt-2 text-xs text-white/60">{name}</p>
-    </div>
-  );
-}
 
 // A lightweight, illustrative calendar mock (pure JSX/CSS) to avoid bundling heavy libs here
 function MockCalendar() {

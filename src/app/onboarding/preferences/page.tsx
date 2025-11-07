@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldSet, FieldTitle } from "@/components/ui/field"
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle } from "@/components/ui/field"
 import { OnboardingNavigation } from "../OnboardingNavigation"
 import { Sun, Moon, Sunrise, type LucideIcon } from "lucide-react"
 import { PreferencesInput, type Preferences, type energyProfiles } from "@/lib/zod"
@@ -42,7 +42,7 @@ export default function PreferencesPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="mb-2 text-3xl font-semibold text-gray-900 sm:text-4xl"
+        className="mb-2 text-3xl font-semibold text-gray-700 dark:text-gray-100 sm:text-4xl"
       >
         {currentStep.title}
       </motion.h1>
@@ -51,7 +51,7 @@ export default function PreferencesPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-        className="mb-10 text-gray-600"
+        className="mb-10 text-muted-foreground"
       >
         {currentStep.description}
       </motion.p>
@@ -71,15 +71,16 @@ export default function PreferencesPage() {
                   <FormControl>
                     <FieldGroup>
                       <FieldSet>
-                        <FieldLabel htmlFor="energy-profile">
+                        <FieldLegend>
                           Energy profile
-                        </FieldLabel>
+                        </FieldLegend>
                         <FieldDescription>
                           We schedule your most important work when you&apos;re naturally at your best.
                         </FieldDescription>
                         <RadioGroup
                           value={field.value}
                           onValueChange={(v) => { field.onChange(v as EnergyProfile) }}
+                          className="mt-2 gap-4"
                         >
                           {cards.map((card, index) => {
                             const id = `energy-${card.key}`
@@ -92,7 +93,7 @@ export default function PreferencesPage() {
                               >
                                 <FieldLabel htmlFor={id} className="transition-colors">
                                   <Field orientation="horizontal">
-                                    <card.icon className="size-6 text-gray-600" />
+                                    <card.icon className="size-6 text-muted-foreground" />
                                     <FieldContent>
                                       <FieldTitle>{card.title}</FieldTitle>
                                       <FieldDescription>{card.description}</FieldDescription>

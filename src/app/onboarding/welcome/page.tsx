@@ -10,9 +10,10 @@ export default function OnboardingWelcomePage() {
   const currentStep = steps[0];
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground flex flex-col items-center justify-center px-6 py-8">
+    <div className="w-full bg-background text-foreground flex flex-col items-start justify-center px-6 py-8">
 
       {/* Phone Mockup */}
+      {/* TODO: Use better dashboard screenshot */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -27,7 +28,7 @@ export default function OnboardingWelcomePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="mb-3 text-3xl font-semibold sm:text-4xl text-center text-balance text-foreground"
+        className="mb-3 text-3xl font-semibold sm:text-4xl text-balance text-foreground"
       >
         {currentStep.title}
       </motion.h1>
@@ -37,7 +38,7 @@ export default function OnboardingWelcomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-        className="text-muted-foreground text-center max-w-md"
+        className="text-muted-foreground max-w-md"
       >
         {currentStep.description}
       </motion.p>
