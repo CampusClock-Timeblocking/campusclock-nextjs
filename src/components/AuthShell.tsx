@@ -15,7 +15,7 @@ const BRAND = {
 
 export default function AuthShell({ path }: { path: string }) {
   const params = useSearchParams();
-  const callbackUrl = params.get("callbackUrl") || "/dashboard";
+  const callbackUrl = params.get("callbackUrl") ?? "/dashboard";
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center justify-center bg-black text-white">
       {/* Hintergrund: softer Verlauf + subtile Glow-Flächen */}
