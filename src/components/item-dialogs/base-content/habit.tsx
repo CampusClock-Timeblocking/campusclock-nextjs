@@ -27,6 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useShiftEnter } from "@/hooks/kbd";
+import { PRIORITY_OPTIONS } from "@/lib/priority";
 
 interface Props {
   hideDialog: () => void;
@@ -125,11 +126,15 @@ export const HabitDialogContent: React.FC<Props> = ({
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1 - Lowest</SelectItem>
-                      <SelectItem value="2">2 - Low</SelectItem>
-                      <SelectItem value="3">3 - Medium</SelectItem>
-                      <SelectItem value="4">4 - High</SelectItem>
-                      <SelectItem value="5">5 - Critical</SelectItem>
+                      {PRIORITY_OPTIONS.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value.toString()}
+                          className={cn(option.selectBgColor, option.color)}
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
