@@ -38,7 +38,7 @@ export function Providers({ children }: { children: ReactNode }) {
           signIn: async (params) => {
             return authClient.signIn.social({
               ...params,
-              callbackURL: "/dashboard",
+              //  callbackURL: "/dashboard",
               newUserCallbackURL: "/onboarding",
             });
           },
