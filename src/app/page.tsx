@@ -58,7 +58,7 @@ export default function Home() {
               ['--from' as string]: BRAND.from,
               ['--via' as string]: BRAND.via,
               ['--to' as string]: BRAND.to,
-            }}><Link href="/onboarding/welcome">Get started</Link></Button>
+            }}><Link href="/auth/sign-up">Get started</Link></Button>
           </div>
         </div>
       </header>
@@ -80,12 +80,14 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href="/onboarding/welcome"><Button className="h-14 px-8 bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white text-lg" style={{
+              <Button asChild className="h-14 px-8 bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] border-0 text-white text-lg" style={{
                 // feed CSS vars for easier theming
                 ['--from' as string]: BRAND.from,
                 ['--via' as string]: BRAND.via,
                 ['--to' as string]: BRAND.to,
-              }}>Get started</Button></Link>
+              }}>
+                <Link href="/auth/sign-up">Get started</Link>
+              </Button>
             </div>
 
             <div className="mt-6 flex items-center gap-4 text-xs text-white/60">
