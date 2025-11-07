@@ -87,9 +87,12 @@ export function DayView({
         const eventEnd = new Date(event.end);
         // For all-day events, the end date is exclusive
         if (event.allDay) {
+          const dayStart = startOfDay(currentDate);
+          const eventStartDay = startOfDay(eventStart);
+          const eventEndDay = startOfDay(eventEnd);
           return (
-            isSameDay(currentDate, eventStart) ||
-            (currentDate > eventStart && currentDate < eventEnd)
+            dayStart.getTime() === eventStartDay.getTime() ||
+            (dayStart > eventStartDay && dayStart < eventEndDay)
           );
         }
         // For timed events, include both start and end dates
