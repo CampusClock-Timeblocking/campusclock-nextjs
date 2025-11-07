@@ -50,9 +50,8 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             {/* Replace with your real logo and set sizes */}
-            <Image src="/campusclock.png" alt="CampusClock" width={36} height={36} priority />
+            <Image src="/logo.svg" alt="CampusClock" width={36} height={36} priority />
             <span className="text-lg font-semibold tracking-tight">CampusClock</span>
-            <Badge variant="secondary" className="ml-2 bg-white/10 text-white">Beta</Badge>
           </div>
           <nav className="hidden items-center gap-6 md:flex">
             <Link href="#features" className="text-sm text-white/80 hover:text-white">Features</Link>
@@ -140,51 +139,6 @@ export default function Home() {
           <StepCard step={1} title="Connect" desc="Link Google Calendar in one click. We’ll import events and keep everything in sync." />
           <StepCard step={2} title="Tune" desc="Pick your energy profile, work hours and class schedule. We’ll propose a realistic plan." />
           <StepCard step={3} title="Flow" desc="Stay in the zone with block‑by‑block guidance and subtle nudges when plans change." />
-        </div>
-      </section>
-
-      {/* INTEGRATIONS */}
-      <section id="integrations" className="mx-auto max-w-7xl px-4 pb-20">
-        <Card className="border-white/10 bg-white/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white/90">
-              <Sparkles className="h-5 w-5" /> Plays nice with your stack
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <IntegrationPill label="Google Calendar" />
-              <IntegrationPill label="Apple Calendar (ICS)" />
-              <IntegrationPill label="Notion Tasks" />
-              <IntegrationPill label="Microsoft 365 (soon)" />
-            </div>
-          </CardContent>
-          <CardFooter className="text-sm text-white/70">Need another integration? <Link href="/contact" className="underline-offset-2 hover:underline">Tell us</Link>.</CardFooter>
-        </Card>
-      </section>
-
-      {/* SOCIAL PROOF */}
-      <section className="mx-auto max-w-7xl px-4 pb-24">
-        <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
-          <Card className="border-white/10 bg-white/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Youtube className="h-5 w-5" /> 90‑sec tour</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40" />
-            </CardContent>
-          </Card>
-
-          <Card className="border-white/10 bg-white/5">
-            <CardHeader>
-              <CardTitle>What students say</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-white/80">
-              <Testimonial text="Finally a planner that adapts when profs move deadlines. My week stays sane." name="Miriam • B.Sc. WiInf" />
-              <Testimonial text="The energy‑blocks are game‑changing. I schedule deep work when I’m actually sharp." name="Jonas • CS" />
-              <Testimonial text="Sync is instant. Blocks feel ‘alive’ instead of static boxes." name="Sofia • Design" />
-            </CardContent>
-          </Card>
         </div>
       </section>
 
