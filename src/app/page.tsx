@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -57,15 +58,13 @@ export default function Home() {
       {/* "bg-background/70" und "border-border" sind themenbewusst */}
       <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <div className="flex items-baseline gap-3">
-            <span className="text-lg tracking-tight font-semibold">
+            <div className="flex items-center gap-3">
+            <Image src="/logo.svg" alt="CampusClock" width={36} height={48} />
+            <span className="text-2xl tracking-tight font-semibold">
               CampusClock
             </span>
             {/* "variant=secondary" ist bereits themenbewusst */}
-            <Badge variant="secondary" className="ml-2">
-              Beta
-            </Badge>
-          </div>
+            </div>
           <nav className="hidden items-center gap-6 md:flex">
             {/* "text-muted-foreground" und "hover:text-foreground" */}
             <Link
@@ -241,13 +240,24 @@ export default function Home() {
         {/* "border-border" und "bg-card" */}
         <Card className="border-border bg-card max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              90‑sec tour
-            </CardTitle>
+        <CardTitle className="flex items-center justify-center gap-2 text-center text-2xl">
+          <span
+            className="bg-gradient-to-r from-[var(--from)] via-[var(--via)] to-[var(--to)] bg-clip-text text-transparent"
+            style={{
+              ["--from" as string]: BRAND.from,
+              ["--via" as string]: BRAND.via,
+              ["--to" as string]: BRAND.to,
+            }}
+          >
+            90-Seconds Demo
+          </span>
+        </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* "border-border" und "bg-muted" für Platzhalter */}
-            <div className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted" />
+        <video className="aspect-video w-full overflow-hidden rounded-xl" controls>
+          <source src="/demo-tour.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
           </CardContent>
         </Card>
       </section>
