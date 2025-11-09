@@ -1,4 +1,5 @@
 // app/api/auth/google-calendar/callback/route.ts
+import { env } from "@/env";
 import { CalendarAccountService } from "@/server/api/services/calendar-account-service";
 import { GCalService } from "@/server/api/services/g-cal-service";
 import { db } from "@/server/db";
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
   )?.value;
   const storedUserId = cookieStore.get("google_oauth_user_id")?.value;
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? url.origin;
+  const baseUrl = env.BETTER_AUTH_URL ?? url.origin;
 
   // Validation: Check all required parameters
   if (!code || !state || !storedState || !storedCodeVerifier || !storedUserId) {

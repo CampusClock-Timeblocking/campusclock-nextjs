@@ -21,8 +21,8 @@ export class GCalService {
 
   private createOAuthClient() {
     return new google.auth.OAuth2(
-      env.GOOGLE_CLIENT_ID,
-      env.GOOGLE_CLIENT_SECRET,
+      env.GOOGLE_CALENDAR_CLIENT_ID,
+      env.GOOGLE_CALENDAR_CLIENT_SECRET,
     );
   }
 
@@ -31,6 +31,23 @@ export class GCalService {
    */
   private async getValidOAuthClient(account: CalendarAccount) {
     const oAuthClient = this.createOAuthClient();
+
+    // Validate that we have the necessary tokens
+    if (!account.accessToken) {
+      throw new TRPCError({
+        message: "No access token found for calendar account",
+        code: "UNAUTHORIZED",
+      });
+    }
+
+    if (!account.refreshToken) {
+      throw new TRPCError({
+        message:
+          "No refresh token found for calendar account. Please reconnect your Google Calendar.",
+        code: "UNAUTHORIZED",
+      });
+    }
+
     oAuthClient.setCredentials({
       access_token: account.accessToken,
       refresh_token: account.refreshToken,
@@ -58,8 +75,9 @@ export class GCalService {
         oAuthClient.setCredentials(credentials);
       } catch (error) {
         throw new TRPCError({
-          message: "Failed to refresh access token",
+          message: `Failed to refresh access token: ${error instanceof Error ? error.message : "Unknown error"}`,
           code: "UNAUTHORIZED",
+          cause: error,
         });
       }
     }

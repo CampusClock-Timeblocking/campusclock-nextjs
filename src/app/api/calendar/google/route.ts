@@ -1,3 +1,4 @@
+import { env } from "@/env";
 import { google } from "@/server/lib/arctic";
 import { auth } from "@/server/lib/auth";
 import { generateState, generateCodeVerifier } from "arctic";
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     cookieStore.set("google_oauth_state", state, {
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 60 * 10,
       sameSite: "lax",
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     cookieStore.set("google_oauth_code_verifier", codeVerifier, {
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 60 * 10,
       sameSite: "lax",
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     cookieStore.set("google_oauth_user_id", session.user.id, {
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 60 * 10,
       sameSite: "lax",
