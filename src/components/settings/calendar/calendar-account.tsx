@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { RiAddLine, RiAppleFill, RiGoogleFill } from "@remixicon/react";
 import { Separator } from "@/components/ui/separator";
 import type { Calendar, CalendarAccount } from "@prisma/client";
-import { Clock, Trash2 } from "lucide-react";
+import { CalendarFold, Clock } from "lucide-react";
 import { CalendarItem, CalendarItemSkeleton } from "./calendar-item";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -83,8 +83,10 @@ export function getPoviderIcon(provider: string, size: number) {
       return <RiGoogleFill size={size} />;
     case "iCloud":
       return <RiAppleFill size={size} />;
-    default:
+    case "campusClock":
       return <Clock size={size} />;
+    default:
+      return <CalendarFold size={size} />;
   }
 }
 
