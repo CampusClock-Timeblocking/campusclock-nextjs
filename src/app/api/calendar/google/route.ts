@@ -34,9 +34,11 @@ export async function GET(request: NextRequest) {
 
     const cookieStore = await cookies();
 
+    const isSecure = request.url.startsWith("https://");
+
     cookieStore.set("google_oauth_state", state, {
       path: "/",
-      secure: env.NODE_ENV === "production",
+      secure: isSecure,
       httpOnly: true,
       maxAge: 60 * 10,
       sameSite: "lax",
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     cookieStore.set("google_oauth_code_verifier", codeVerifier, {
       path: "/",
-      secure: env.NODE_ENV === "production",
+      secure: isSecure,
       httpOnly: true,
       maxAge: 60 * 10,
       sameSite: "lax",
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     cookieStore.set("google_oauth_user_id", session.user.id, {
       path: "/",
-      secure: env.NODE_ENV === "production",
+      secure: isSecure,
       httpOnly: true,
       maxAge: 60 * 10,
       sameSite: "lax",
