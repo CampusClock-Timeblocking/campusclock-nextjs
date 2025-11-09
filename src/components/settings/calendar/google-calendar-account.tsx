@@ -115,7 +115,7 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
             size="sm"
             onClick={handleDeleteAccount}
             isLoading={deleteAccountMutation.isPending}
-            className="hover:text-destructive text-muted gap-2 !px-2"
+            className="hover:text-destructive text-muted-foreground gap-2 !px-2"
           >
             <Trash2 />
           </AsyncButton>
