@@ -7,7 +7,9 @@ import {
 } from "@prisma/client";
 import { db as newDbInstance } from "@/server/db";
 import { GCalService } from "./g-cal-service";
+import { CalDAVService } from "./caldav.service";
 import { CacheService } from "./cache-service";
+import { decrypt } from "@/server/lib/encryption";
 
 export interface CalendarWithEventsAndAccount extends Calendar {
   events: Omit<Event, "calendar" | "task">[];
@@ -243,8 +245,41 @@ export class CalendarService {
               );
               // Continue with empty events for this account
             }
+          } else if (account.provider === "iCloud") {
+            // Fetch events from iCloud Calendar via CalDAV
+            try {
+              if (
+                account.email &&
+                account.encryptedPassword &&
+                account.calDavUrl
+              ) {
+                const decryptedPassword = decrypt(account.encryptedPassword);
+                const caldavService = new CalDAVService(
+                  account.calDavUrl,
+                  account.email,
+                  decryptedPassword,
+                  this.db,
+                );
+                const accountEventsMap =
+                  await caldavService.getAllEventsFromCalendarAccount(
+                    account,
+                    weekBounds.start,
+                    weekBounds.end,
+                  );
+                // Add to events map
+                for (const [calendarId, events] of accountEventsMap) {
+                  eventsMap.set(calendarId, events);
+                }
+              }
+            } catch (error) {
+              console.warn(
+                `Failed to fetch events from iCloud calendar account ${account.id}:`,
+                error,
+              );
+              // Continue with empty events for this account
+            }
           }
-          // Future providers (Outlook, Apple Calendar, etc.) can be added here
+          // Future providers (Outlook, etc.) can be added here
         }
 
         // Flatten to calendar-centric view with events

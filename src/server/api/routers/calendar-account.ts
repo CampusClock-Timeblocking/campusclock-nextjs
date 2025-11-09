@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { CalDAVService } from "../services/caldav.service";
-import { syncCalendars } from "tsdav";
 import { TRPCError } from "@trpc/server";
 import { GCalService } from "../services/g-cal-service";
+import { encrypt, decrypt } from "@/server/lib/encryption";
 
-// Zod Schemas
 export const createCalendarAccountSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().optional(),
@@ -41,9 +40,7 @@ const getByIdSchema = z.object({
   id: z.string().uuid(),
 });
 
-// Router
 export const calendarAccountRouter = createTRPCRouter({
-  // Get all calendar accounts for the current user
   getAll: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.calendarAccount.findMany({
       where: { userId: ctx.session.user.id },
@@ -56,7 +53,6 @@ export const calendarAccountRouter = createTRPCRouter({
     });
   }),
 
-  // Get a single calendar account by ID
   getById: protectedProcedure
     .input(getByIdSchema)
     .query(async ({ ctx, input }) => {
@@ -77,7 +73,6 @@ export const calendarAccountRouter = createTRPCRouter({
       return account;
     }),
 
-  // Create a new calendar account
   create: protectedProcedure
     .input(createCalendarAccountSchema)
     .mutation(async ({ ctx, input }) => {
@@ -92,13 +87,11 @@ export const calendarAccountRouter = createTRPCRouter({
       });
     }),
 
-  // Update an existing calendar account
   update: protectedProcedure
     .input(updateCalendarAccountSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
 
-      // Verify ownership
       const account = await ctx.db.calendarAccount.findFirst({
         where: {
           id,
@@ -119,11 +112,9 @@ export const calendarAccountRouter = createTRPCRouter({
       });
     }),
 
-  // Delete a calendar account
   delete: protectedProcedure
     .input(deleteCalendarAccountSchema)
     .mutation(async ({ ctx, input }) => {
-      // Verify ownership
       const account = await ctx.db.calendarAccount.findFirst({
         where: {
           id: input.id,
@@ -162,6 +153,83 @@ export const calendarAccountRouter = createTRPCRouter({
           ctx.session.user.id,
           account.id,
         );
+      } else if (account.provider === "iCloud") {
+        if (
+          !account.email ||
+          !account.encryptedPassword ||
+          !account.calDavUrl
+        ) {
+          throw new TRPCError({
+            message: "Missing CalDAV credentials for iCloud account",
+            code: "BAD_REQUEST",
+          });
+        }
+        const decryptedPassword = decrypt(account.encryptedPassword);
+        const caldavService = new CalDAVService(
+          account.calDavUrl,
+          account.email,
+          decryptedPassword,
+          ctx.db,
+        );
+        return await caldavService.syncCalDAVCalendarAccount(
+          ctx.session.user.id,
+          account.id,
+        );
       }
+    }),
+
+  addICloudAccount: protectedProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        appPassword: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const caldavService = new CalDAVService(
+        "https://caldav.icloud.com",
+        input.email,
+        input.appPassword,
+        ctx.db,
+      );
+
+      try {
+        await caldavService.connect();
+      } catch (error) {
+        throw new TRPCError({
+          message:
+            "Failed to connect to iCloud. Please check your credentials.",
+          code: "UNAUTHORIZED",
+        });
+      }
+
+      const data = {
+        userId: ctx.session.user.id,
+        email: input.email,
+        name: `iCloud (${input.email})`,
+        provider: "iCloud",
+        providerAccountId: input.email,
+        encryptedPassword: encrypt(input.appPassword),
+        calDavUrl: "https://caldav.icloud.com",
+      };
+
+      const calendarAccount = await ctx.db.calendarAccount.upsert({
+        where: {
+          userId_provider_providerAccountId: {
+            userId: ctx.session.user.id,
+            provider: "iCloud",
+            providerAccountId: input.email,
+          },
+        },
+        update: data,
+        create: data,
+      });
+
+      await caldavService.syncCalDAVCalendarAccount(
+        ctx.session.user.id,
+        calendarAccount.id,
+      );
+
+      return calendarAccount;
     }),
 });

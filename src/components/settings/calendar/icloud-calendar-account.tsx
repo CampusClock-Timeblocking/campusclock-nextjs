@@ -8,13 +8,12 @@ import { toast } from "sonner";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { RiDeleteBinLine, RiGoogleLine } from "@remixicon/react";
+import { RiDeleteBinLine, RiAppleFill } from "@remixicon/react";
 import { AsyncButton } from "@/components/basic-components/async-action-button";
 import { Trash2 } from "lucide-react";
 
-export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
+export function ICloudCalendarAccount({ account }: CalendarAccountProps) {
   const utils = api.useUtils();
   const { confirm } = useConfirmationDialog();
   const syncCalendarsMutation = api.calendarAccount.syncCalendars.useMutation({
@@ -40,8 +39,8 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
 
   const onSyncCalendars = () => {
     toast.promise(syncCalendarsMutation.mutateAsync({ id: account.id }), {
-      loading: "Syncing Google calendars...",
-      success: "Google calendars synced.",
+      loading: "Syncing iCloud calendars...",
+      success: "iCloud calendars synced.",
       error: (err: Error) => {
         return err?.message ?? "Something went wrong";
       },
@@ -52,7 +51,7 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
     const confirmed = await confirm({
       title: "Are you sure you want to remove this calendar?",
       description:
-        "The calendar will be removed from CampusClock, but will remain in your Google account. To re-add it, simply sync your Google calendars again.",
+        "The calendar will be removed from CampusClock, but will remain in your iCloud account. To re-add it, simply sync your iCloud calendars again.",
       confirmText: "Remove from CampusClock",
       cancelText: "Cancel",
       variant: "destructive",
@@ -70,17 +69,17 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
 
   const handleDeleteAccount = async () => {
     const confirmed = await confirm({
-      title: "Are you sure you want to disconnect this Google account?",
+      title: "Are you sure you want to disconnect this iCloud account?",
       description:
-        "All calendars from this account will be removed from CampusClock. Your Google calendars will remain unchanged.",
+        "All calendars from this account will be removed from CampusClock. Your iCloud calendars will remain unchanged.",
       confirmText: "Disconnect Account",
       cancelText: "Cancel",
       variant: "destructive",
     });
     if (confirmed) {
       toast.promise(deleteAccountMutation.mutateAsync({ id: account.id }), {
-        loading: "Disconnecting Google account...",
-        success: "Google account disconnected.",
+        loading: "Disconnecting iCloud account...",
+        success: "iCloud account disconnected.",
         error: (err: Error) => {
           return err?.message ?? "Something went wrong";
         },
@@ -88,7 +87,7 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
     }
   };
 
-  const googleCalendarMenueContent = (id: string) => {
+  const iCloudCalendarMenueContent = (id: string) => {
     return (
       <DropdownMenuContent align="end" className="w-[200px]">
         <DropdownMenuItem
@@ -104,7 +103,7 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
 
   return (
     <CalendarAccountLayout
-      title="Google Calendar"
+      title="iCloud Calendar"
       description={
         account.email ?? account.name ?? "CampusClock Calendar Account"
       }
@@ -124,14 +123,14 @@ export function GoogleCalendarAccount({ account }: CalendarAccountProps) {
             onClick={onSyncCalendars}
             isLoading={syncCalendarsMutation.isPending}
           >
-            <RiGoogleLine />
+            <RiAppleFill />
             Sync Calendars
           </AsyncButton>
         </div>
       }
       calendars={account.calendars}
       provider={account.provider}
-      menuContent={googleCalendarMenueContent}
+      menuContent={iCloudCalendarMenueContent}
     />
   );
 }

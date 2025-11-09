@@ -3,12 +3,13 @@ import type { ReactNode } from "react";
 import { RiAddLine, RiAppleFill, RiGoogleFill } from "@remixicon/react";
 import { Separator } from "@/components/ui/separator";
 import type { Calendar, CalendarAccount } from "@prisma/client";
-import { Clock } from "lucide-react";
+import { Clock, Trash2 } from "lucide-react";
 import { CalendarItem, CalendarItemSkeleton } from "./calendar-item";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GoogleCalendarAccount } from "./google-calendar-account";
+import { ICloudCalendarAccount } from "./icloud-calendar-account";
 import { CampusClockCalendarAccount } from "./campusclock-calendar-account";
 
 export interface CalendarAccountProps {
@@ -19,7 +20,7 @@ export function CalendarAccount({ account }: CalendarAccountProps) {
     case "google":
       return <GoogleCalendarAccount account={account} />;
     case "iCloud":
-      return null;
+      return <ICloudCalendarAccount account={account} />;
     case "campusClock":
       return <CampusClockCalendarAccount account={account} />;
     default:
