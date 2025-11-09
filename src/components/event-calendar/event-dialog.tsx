@@ -106,16 +106,6 @@ export function EventDialog({
   const updateTaskMutation = useUpdateTaskMutation({
     taskId: displayEvent?.taskId ?? "",
   });
-
-  // Find the calendar for this event
-  const eventCalendar = calendars?.find(
-    (cal) => cal.id === displayEvent?.calendarId,
-  );
-
-  // Check if this event is from an external/read-only calendar
-  const isExternalCalendar =
-    eventCalendar?.type === "EXTERNAL" || eventCalendar?.readOnly === true;
-
   const form = useForm<CreateEventFormInput>({
     resolver: zodResolver(CreateEventFormSchema),
     defaultValues: {
@@ -129,6 +119,21 @@ export function EventDialog({
       calendarId: "",
     },
   });
+  // Find the calendar for this event
+  const selectedCalendarId = form.watch("calendarId");
+
+  const eventCalendar = selectedCalendarId
+    ? calendars?.find((cal) => cal.id === selectedCalendarId)
+    : calendars?.find(
+        (cal) =>
+          cal.calendarAccount.provider === "campusClock" ||
+          cal.readOnly === false,
+      );
+
+  // Check if this event is from an external/read-only calendar
+  const isExternalCalendar =
+    eventCalendar?.calendarAccount.provider !== "campusClock" ||
+    eventCalendar?.readOnly === true;
 
   const allDay = form.watch("allDay");
   const startDate = form.watch("start");
@@ -180,12 +185,14 @@ export function EventDialog({
       const start = new Date(event.start);
       const end = new Date(event.end);
 
-      // For new events (no ID), auto-select first local calendar if not already set
-      const firstLocalCalendar = calendars?.find((cal) => cal.type === "LOCAL");
+      // For new events (no ID), auto-select first campusClock calendar if not already set
+      const firstCampusClockCalendar = calendars?.find(
+        (cal) => cal.calendarAccount.provider === "campusClock",
+      );
       const calendarId = event.calendarId
         ? event.calendarId
         : !event.id
-          ? (firstLocalCalendar?.id ?? "")
+          ? (firstCampusClockCalendar?.id ?? "")
           : "";
 
       form.reset({
@@ -199,8 +206,10 @@ export function EventDialog({
         calendarId,
       });
     } else {
-      // For null event state, default to first local calendar if available
-      const firstLocalCalendar = calendars?.find((cal) => cal.type === "LOCAL");
+      // For null event state, default to first campusClock calendar if available
+      const firstCampusClockCalendar = calendars?.find(
+        (cal) => cal.calendarAccount.provider === "campusClock",
+      );
       form.reset({
         title: "",
         description: "",
@@ -209,7 +218,7 @@ export function EventDialog({
         allDay: false,
         location: "",
         color: "blue",
-        calendarId: firstLocalCalendar?.id ?? "",
+        calendarId: firstCampusClockCalendar?.id ?? "",
       });
     }
   }, [event, form, calendars]);
@@ -442,10 +451,14 @@ export function EventDialog({
                 control={form.control}
                 name="calendarId"
                 render={({ field }) => {
-                  const localCalendars =
-                    calendars?.filter((cal) => cal.type === "LOCAL") ?? [];
+                  const campusClockCalendars =
+                    calendars?.filter(
+                      (cal) => cal.calendarAccount.provider === "campusClock",
+                    ) ?? [];
                   const externalCalendars =
-                    calendars?.filter((cal) => cal.type === "EXTERNAL") ?? [];
+                    calendars?.filter(
+                      (cal) => cal.calendarAccount.provider !== "campusClock",
+                    ) ?? [];
                   const selectedCalendar = calendars?.find(
                     (cal) => cal.id === field.value,
                   );
@@ -479,10 +492,10 @@ export function EventDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {localCalendars.length > 0 && (
+                          {campusClockCalendars.length > 0 && (
                             <SelectGroup>
-                              <SelectLabel>Local Calendars</SelectLabel>
-                              {localCalendars.map((calendar) => (
+                              <SelectLabel>CampusClock Calendars</SelectLabel>
+                              {campusClockCalendars.map((calendar) => (
                                 <SelectItem
                                   key={calendar.id}
                                   value={calendar.id}
@@ -504,7 +517,7 @@ export function EventDialog({
                             </SelectGroup>
                           )}
 
-                          {localCalendars.length > 0 &&
+                          {campusClockCalendars.length > 0 &&
                             externalCalendars.length > 0 && (
                               <Separator className="my-2" />
                             )}
@@ -530,8 +543,9 @@ export function EventDialog({
                                     />
                                     <span className="truncate">
                                       {calendar.name}
-                                      {calendar.provider &&
-                                        ` (${calendar.provider})`}
+                                      {calendar.calendarAccount.provider !==
+                                        "campusClock" &&
+                                        ` (${calendar.calendarAccount.provider})`}
                                     </span>
                                   </div>
                                 </SelectItem>
@@ -795,7 +809,7 @@ export function EventDialog({
                         disabled={isExternalCalendar}
                       />
                     </FormControl>
-                    <FormLabel className="!mt-0">All day</FormLabel>
+                    <FormLabel className="mt-0!">All day</FormLabel>
                   </FormItem>
                 )}
               />

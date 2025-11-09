@@ -7,7 +7,6 @@ import { z } from "zod";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -22,27 +21,16 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { RiCalendar2Line, RiPaletteLine } from "@remixicon/react";
-
-// Calendar type from your database
-type Calendar = {
-  id: string;
-  name: string;
-  backgroundColor: string;
-  foregroundColor: string;
-};
+import { RiCalendar2Line, RiPaletteLine, RiCheckLine } from "@remixicon/react";
+import { useDialog } from "@/providers/dialog-provider";
+import type { Calendar } from "@prisma/client";
 
 const calendarFormSchema = z.object({
   name: z
     .string()
     .min(1, "Calendar name is required")
     .max(50, "Calendar name must be less than 50 characters"),
-  description: z
-    .string()
-    .max(200, "Description must be less than 200 characters")
-    .optional(),
   backgroundColor: z
     .string()
     .regex(/^#[0-9A-F]{6}$/i, "Please enter a valid hex color"),
@@ -54,40 +42,42 @@ const calendarFormSchema = z.object({
 type CalendarFormData = z.infer<typeof calendarFormSchema>;
 
 const DEFAULT_COLORS = [
-  { bg: "#3b82f6", fg: "#ffffff" }, // Blue
-  { bg: "#ef4444", fg: "#ffffff" }, // Red
-  { bg: "#10b981", fg: "#ffffff" }, // Green
-  { bg: "#f59e0b", fg: "#000000" }, // Yellow
-  { bg: "#8b5cf6", fg: "#ffffff" }, // Purple
-  { bg: "#ec4899", fg: "#ffffff" }, // Pink
-  { bg: "#06b6d4", fg: "#ffffff" }, // Cyan
-  { bg: "#84cc16", fg: "#000000" }, // Lime
+  { bg: "#3b82f6", fg: "#ffffff", name: "Blue" }, // Blue
+  { bg: "#ef4444", fg: "#ffffff", name: "Red" }, // Red
+  { bg: "#10b981", fg: "#ffffff", name: "Green" }, // Green
+  { bg: "#f59e0b", fg: "#ffffff", name: "Amber" }, // Amber
+  { bg: "#8b5cf6", fg: "#ffffff", name: "Purple" }, // Purple
+  { bg: "#ec4899", fg: "#ffffff", name: "Pink" }, // Pink
+  { bg: "#06b6d4", fg: "#ffffff", name: "Cyan" }, // Cyan
+  { bg: "#84cc16", fg: "#ffffff", name: "Lime" }, // Lime
 ];
 
-interface CalendarFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface CalendarFormDialogContentProps {
   calendar?: Calendar | null;
   onSuccess?: () => void;
 }
 
-export function CalendarFormDialog({
-  open,
-  onOpenChange,
+function CalendarFormDialogContent({
   calendar,
   onSuccess,
-}: CalendarFormDialogProps) {
-  const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(
-    null,
-  );
-  
+}: CalendarFormDialogContentProps) {
+  const [selectedColorIndex, setSelectedColorIndex] = useState<number>(0);
+  const { hideDialog } = useDialog();
+
   const utils = api.useUtils();
   const isEditing = !!calendar;
+
+  // Get the CampusClock calendar account
+  const { data: calendarAccounts } = api.calendarAccount.getAll.useQuery();
+  const campusClockAccount = calendarAccounts?.find(
+    (account) => account.provider === "campusClock",
+  );
 
   const { mutateAsync: createCalendar, isPending: isCreating } =
     api.calendar.create.useMutation({
       onSuccess: async () => {
         await utils.calendar.invalidate();
+        await utils.calendarAccount.invalidate();
         onSuccess?.();
       },
     });
@@ -96,6 +86,7 @@ export function CalendarFormDialog({
     api.calendar.update.useMutation({
       onSuccess: async () => {
         await utils.calendar.invalidate();
+        await utils.calendarAccount.invalidate();
         onSuccess?.();
       },
     });
@@ -104,40 +95,22 @@ export function CalendarFormDialog({
     resolver: zodResolver(calendarFormSchema),
     defaultValues: {
       name: calendar?.name ?? "",
-      description: "",
       backgroundColor: calendar?.backgroundColor ?? "#3b82f6",
       foregroundColor: calendar?.foregroundColor ?? "#ffffff",
     },
   });
 
-  // Reset form when calendar changes or dialog opens/closes
+  // Set initial color index
   useEffect(() => {
-    if (open) {
-      if (calendar) {
-        form.reset({
-          name: calendar.name,
-          description: "",
-          backgroundColor: calendar.backgroundColor,
-          foregroundColor: calendar.foregroundColor,
-        });
-        // Find matching color preset
-        const matchingColorIndex = DEFAULT_COLORS.findIndex(
-          (color) =>
-            color.bg === calendar.backgroundColor &&
-            color.fg === calendar.foregroundColor,
-        );
-        setSelectedColorIndex(matchingColorIndex >= 0 ? matchingColorIndex : null);
-      } else {
-        form.reset({
-          name: "",
-          description: "",
-          backgroundColor: "#3b82f6",
-          foregroundColor: "#ffffff",
-        });
-        setSelectedColorIndex(0);
-      }
+    if (calendar) {
+      const matchingColorIndex = DEFAULT_COLORS.findIndex(
+        (color) =>
+          color.bg === calendar.backgroundColor &&
+          color.fg === calendar.foregroundColor,
+      );
+      setSelectedColorIndex(matchingColorIndex >= 0 ? matchingColorIndex : 0);
     }
-  }, [open, calendar, form]);
+  }, [calendar]);
 
   const handleColorSelect = (colorIndex: number) => {
     const color = DEFAULT_COLORS[colorIndex];
@@ -157,131 +130,126 @@ export function CalendarFormDialog({
           backgroundColor: data.backgroundColor,
           foregroundColor: data.foregroundColor,
         });
-        
+
         toast.promise(promise, {
           loading: "Updating calendar...",
           success: "Calendar updated successfully!",
           error: "Failed to update calendar",
         });
-        
+
         await promise;
       } else {
+        if (!campusClockAccount) {
+          toast.error("CampusClock account not found. Please try again.");
+          return;
+        }
+
         const promise = createCalendar({
           name: data.name,
           backgroundColor: data.backgroundColor,
           foregroundColor: data.foregroundColor,
+          calendarAccountId: campusClockAccount.id,
         });
-        
+
         toast.promise(promise, {
           loading: "Creating calendar...",
           success: "Calendar created successfully!",
           error: "Failed to create calendar",
         });
-        
+
         await promise;
       }
-      onOpenChange(false);
+      hideDialog();
     } catch (error) {
       // Error is handled by toast.promise
       console.error("Calendar operation failed:", error);
     }
   };
 
-  const handleClose = () => {
-    form.reset();
-    setSelectedColorIndex(null);
-    onOpenChange(false);
-  };
-
   const backgroundColor = form.watch("backgroundColor");
   const foregroundColor = form.watch("foregroundColor");
+  const calendarName = form.watch("name");
+
+  const isPending = isCreating || isUpdating;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RiCalendar2Line className="h-5 w-5" />
-            {isEditing ? "Edit Calendar" : "Create New Calendar"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Update your calendar details and colors."
-              : "Create a new calendar to organize your events."}
-          </DialogDescription>
-        </DialogHeader>
+    <DialogContent className="max-w-lg">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-xl">
+          <RiCalendar2Line className="h-5 w-5" />
+          {isEditing ? "Edit Calendar" : "Create New Calendar"}
+        </DialogTitle>
+        <DialogDescription>
+          {isEditing
+            ? "Update your calendar name and color."
+            : "Create a new calendar to organize your events and tasks."}
+        </DialogDescription>
+      </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <FieldSet>
-            <FieldGroup>
-              {/* Calendar Name */}
-              <Field data-invalid={!!form.formState.errors.name}>
-                <FieldLabel htmlFor="name">Calendar Name</FieldLabel>
-                <Input
-                  id="name"
-                  placeholder="My Calendar"
-                  {...form.register("name")}
-                  disabled={isCreating || isUpdating}
-                  aria-invalid={!!form.formState.errors.name}
-                />
-                <FieldError>
-                  {form.formState.errors.name?.message}
-                </FieldError>
-              </Field>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FieldSet>
+          <FieldGroup>
+            {/* Calendar Name */}
+            <Field data-invalid={!!form.formState.errors.name}>
+              <FieldLabel htmlFor="name">Calendar Name</FieldLabel>
+              <Input
+                id="name"
+                placeholder="e.g., Work, Personal, Study"
+                {...form.register("name")}
+                disabled={isPending}
+                aria-invalid={!!form.formState.errors.name}
+                className="text-base"
+              />
+              <FieldError>{form.formState.errors.name?.message}</FieldError>
+            </Field>
 
-              {/* Description (optional) */}
-              <Field data-invalid={!!form.formState.errors.description}>
-                <FieldLabel htmlFor="description">
-                  Description{" "}
-                  <span className="text-muted-foreground text-sm">
-                    (optional)
-                  </span>
-                </FieldLabel>
-                <Textarea
-                  id="description"
-                  placeholder="Calendar description..."
-                  className="resize-none"
-                  rows={3}
-                  {...form.register("description")}
-                  disabled={isCreating || isUpdating}
-                  aria-invalid={!!form.formState.errors.description}
-                />
-                <FieldError>
-                  {form.formState.errors.description?.message}
-                </FieldError>
-              </Field>
+            {/* Color Selection */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <RiPaletteLine className="text-muted-foreground h-4 w-4" />
+                <FieldLabel className="mb-0">Calendar Color</FieldLabel>
+              </div>
 
-              {/* Color Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <RiPaletteLine className="h-4 w-4" />
-                  <FieldLabel>Calendar Color</FieldLabel>
-                </div>
+              {/* Color Presets - Enhanced Grid */}
+              <div className="grid grid-cols-4 gap-3">
+                {DEFAULT_COLORS.map((color, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleColorSelect(index)}
+                    className={`group relative h-14 w-full rounded-xl border-2 transition-all duration-200 hover:scale-105 ${
+                      selectedColorIndex === index
+                        ? "ring-primary border-primary ring-2 ring-offset-2"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                    style={{ backgroundColor: color.bg }}
+                    disabled={isPending}
+                    title={color.name}
+                  >
+                    {/* Checkmark for selected color */}
+                    {selectedColorIndex === index && (
+                      <div className="bg-background absolute top-1 right-1 rounded-full p-0.5 shadow-sm">
+                        <RiCheckLine
+                          className="h-3.5 w-3.5"
+                          style={{ color: color.bg }}
+                        />
+                      </div>
+                    )}
 
-                {/* Color Presets */}
-                <div className="grid grid-cols-4 gap-3">
-                  {DEFAULT_COLORS.map((color, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleColorSelect(index)}
-                      className={`h-12 w-full rounded-lg border-2 transition-all hover:scale-105 ${
-                        selectedColorIndex === index
-                          ? "border-primary ring-2 ring-primary/20"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                      style={{ backgroundColor: color.bg }}
-                      disabled={isCreating || isUpdating}
-                    >
-                      <div
-                        className="mx-auto h-2 w-8 rounded-full"
-                        style={{ backgroundColor: color.fg }}
-                      />
-                    </button>
-                  ))}
-                </div>
+                    {/* Text color preview stripe */}
+                    <div
+                      className="absolute bottom-1.5 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full opacity-80"
+                      style={{ backgroundColor: color.fg }}
+                    />
+                  </button>
+                ))}
+              </div>
 
-                {/* Custom Color Inputs */}
+              {/* Custom Color Inputs */}
+              <div className="bg-muted/50 rounded-lg border p-4">
+                <p className="text-muted-foreground mb-3 text-sm font-medium">
+                  Custom Colors
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field data-invalid={!!form.formState.errors.backgroundColor}>
                     <FieldLabel htmlFor="backgroundColor" className="text-sm">
@@ -291,12 +259,13 @@ export function CalendarFormDialog({
                       <Input
                         id="backgroundColor"
                         {...form.register("backgroundColor")}
-                        disabled={isCreating || isUpdating}
+                        disabled={isPending}
                         placeholder="#3b82f6"
+                        className="font-mono text-sm"
                         aria-invalid={!!form.formState.errors.backgroundColor}
                       />
                       <div
-                        className="h-10 w-12 shrink-0 rounded border"
+                        className="h-10 w-12 shrink-0 rounded-md border-2"
                         style={{ backgroundColor }}
                       />
                     </div>
@@ -313,12 +282,13 @@ export function CalendarFormDialog({
                       <Input
                         id="foregroundColor"
                         {...form.register("foregroundColor")}
-                        disabled={isCreating || isUpdating}
+                        disabled={isPending}
                         placeholder="#ffffff"
+                        className="font-mono text-sm"
                         aria-invalid={!!form.formState.errors.foregroundColor}
                       />
                       <div
-                        className="h-10 w-12 shrink-0 rounded border"
+                        className="h-10 w-12 shrink-0 rounded-md border-2"
                         style={{ backgroundColor: foregroundColor }}
                       />
                     </div>
@@ -327,52 +297,67 @@ export function CalendarFormDialog({
                     </FieldError>
                   </Field>
                 </div>
+              </div>
+            </div>
 
-                {/* Color Preview */}
-                <div className="rounded-lg border p-4">
-                  <div
-                    className="rounded px-3 py-2 text-center text-sm font-medium"
-                    style={{
-                      backgroundColor,
-                      color: foregroundColor,
-                    }}
-                  >
-                    Preview: {form.watch("name") || "Calendar Name"}
+            {/* Enhanced Preview */}
+            <div className="space-y-2">
+              <FieldLabel className="text-sm">Preview</FieldLabel>
+              <div className="bg-muted/30 rounded-lg border p-4">
+                <div
+                  className="rounded-lg px-4 py-3 text-center font-medium shadow-sm transition-all"
+                  style={{
+                    backgroundColor,
+                    color: foregroundColor,
+                  }}
+                >
+                  <RiCalendar2Line
+                    className="mb-1 inline-block"
+                    style={{ color: foregroundColor }}
+                  />
+                  <div className="text-sm">
+                    {calendarName || "Calendar Name"}
                   </div>
                 </div>
               </div>
-            </FieldGroup>
-          </FieldSet>
+            </div>
+          </FieldGroup>
+        </FieldSet>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isCreating || isUpdating}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isCreating || isUpdating}
-              className="gap-2"
-            >
-              {isCreating || isUpdating ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  {isEditing ? "Updating..." : "Creating..."}
-                </>
-              ) : (
-                <>
-                  <RiCalendar2Line className="h-4 w-4" />
-                  {isEditing ? "Update Calendar" : "Create Calendar"}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={hideDialog}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending} className="gap-2">
+            {isPending ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                {isEditing ? "Updating..." : "Creating..."}
+              </>
+            ) : (
+              <>{isEditing ? "Update Calendar" : "Create Calendar"}</>
+            )}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
   );
+}
+
+// Wrapper components for use with showDialog
+export function CreateCalendarDialog() {
+  return <CalendarFormDialogContent />;
+}
+
+interface EditCalendarDialogProps {
+  calendar: Calendar;
+}
+
+export function EditCalendarDialog({ calendar }: EditCalendarDialogProps) {
+  return <CalendarFormDialogContent calendar={calendar} />;
 }

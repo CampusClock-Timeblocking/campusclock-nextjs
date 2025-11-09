@@ -2,30 +2,48 @@ import { ItemGroup } from "@/components/ui/item";
 import type { ReactNode } from "react";
 import { RiAddLine, RiAppleFill, RiGoogleFill } from "@remixicon/react";
 import { Separator } from "@/components/ui/separator";
-import type { Calendar } from "@prisma/client";
+import type { Calendar, CalendarAccount } from "@prisma/client";
 import { Clock } from "lucide-react";
 import { CalendarItem, CalendarItemSkeleton } from "./calendar-item";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GoogleCalendarAccount } from "./google-calendar-account";
+import { CampusClockCalendarAccount } from "./campusclock-calendar-account";
 
-interface Props {
-  title: string;
-  description: string;
-  action: ReactNode;
-  calendars?: Calendar[];
-  menuContent?: (id: string) => ReactNode;
-  provider: "google" | "campusClock" | "iCloud";
+export interface CalendarAccountProps {
+  account: CalendarAccount & { calendars: Calendar[] };
+}
+export function CalendarAccount({ account }: CalendarAccountProps) {
+  switch (account.provider) {
+    case "google":
+      return <GoogleCalendarAccount account={account} />;
+    case "iCloud":
+      return null;
+    case "campusClock":
+      return <CampusClockCalendarAccount account={account} />;
+    default:
+      return null;
+  }
 }
 
-export function CalendarAccount({
+interface CalendarLayouProps {
+  title: string;
+  description: string;
+  action: ReactNode | null;
+  calendars?: Calendar[];
+  menuContent?: (id: string) => ReactNode;
+  provider: string;
+}
+
+export function CalendarAccountLayout({
   title,
   description,
   action,
   calendars,
   menuContent,
   provider,
-}: Props) {
+}: CalendarLayouProps) {
   return (
     <div className="border-border space-y-3 rounded-lg border p-4">
       <div className="flex items-center gap-3">
@@ -33,19 +51,13 @@ export function CalendarAccount({
           className="border-border shrink-0 rounded-sm border"
           style={{ padding: 6 }}
         >
-          {provider === "google" ? (
-            <RiGoogleFill size={30} />
-          ) : provider === "campusClock" ? (
-            <Clock size={30} />
-          ) : (
-            <RiAppleFill size={30} />
-          )}
+          {getPoviderIcon(provider, 30)}
         </div>
         <div className="flex flex-col justify-center">
           <h3 className="text-lg font-semibold">{title}</h3>
           <p className="text-muted-foreground text-sm">{description}</p>
         </div>
-        <div className="ml-auto">{action}</div>
+        {action && <div className="ml-auto">{action}</div>}
       </div>
       <Separator />
 
@@ -62,6 +74,17 @@ export function CalendarAccount({
       </ItemGroup>
     </div>
   );
+}
+
+export function getPoviderIcon(provider: string, size: number) {
+  switch (provider) {
+    case "google":
+      return <RiGoogleFill size={size} />;
+    case "iCloud":
+      return <RiAppleFill size={size} />;
+    default:
+      return <Clock size={size} />;
+  }
 }
 
 interface AddProps {

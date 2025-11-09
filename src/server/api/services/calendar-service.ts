@@ -1,16 +1,17 @@
 import {
   CalendarType,
-  CalendarProvider,
   type PrismaClient,
   type Event,
   type Calendar,
+  type CalendarAccount,
 } from "@prisma/client";
 import { db as newDbInstance } from "@/server/db";
 import { GCalService } from "./g-cal-service";
 import { CacheService } from "./cache-service";
 
-export interface CalendarWithEvents extends Calendar {
+export interface CalendarWithEventsAndAccount extends Calendar {
   events: Omit<Event, "calendar" | "task">[];
+  calendarAccount: CalendarAccount;
 }
 
 export class CalendarService {
@@ -69,12 +70,30 @@ export class CalendarService {
     return `calendars:${userId}:week:${weekStart.toISOString()}`;
   }
 
+  /**
+   * Create a new calendar for a campusClock calendar account
+   * Only campusClock calendars can be created manually by users
+   */
   async createCalendar(
     userId: string,
+    calendarAccountId: string,
     name?: string,
     backgroundColor?: string,
     foregroundColor?: string,
   ) {
+    // Verify this is a campusClock account
+    const calendarAccount = await this.db.calendarAccount.findFirst({
+      where: { id: calendarAccountId, userId },
+    });
+
+    if (!calendarAccount) {
+      throw new Error("Calendar account not found");
+    }
+
+    if (calendarAccount.provider !== "campusClock") {
+      throw new Error("Can only create calendars for campusClock accounts");
+    }
+
     return await this.db.calendar.create({
       data: {
         userId,
@@ -83,6 +102,7 @@ export class CalendarService {
         foregroundColor: foregroundColor ?? "#000000",
         type: CalendarType.LOCAL,
         readOnly: false,
+        calendarAccountId,
       },
     });
   }
@@ -94,7 +114,6 @@ export class CalendarService {
     backgroundColor?: string,
     foregroundColor?: string,
   ) {
-
     const calendar = await this.db.calendar.findFirst({
       where: { id: calendarId, userId },
     });
@@ -117,29 +136,29 @@ export class CalendarService {
     });
   }
 
-  async deleteCalendar(
-    userId: string,
-    calendarId: string,
-  ) {
+  async deleteCalendar(userId: string, calendarId: string) {
     const calendar = await this.db.calendar.findFirst({
       where: { id: calendarId, userId },
+      include: { calendarAccount: true },
     });
 
     if (!calendar) {
       throw new Error("Calendar not found");
     }
 
-    if (calendar.type === CalendarType.LOCAL) {
+    // Prevent deletion of the last campusClock calendar
+    if (calendar.calendarAccount.provider === "campusClock") {
       const allCalendars = await this.db.calendar.findMany({
         where: { userId },
+        include: { calendarAccount: true },
       });
 
-      const countOfLocalCalendars = allCalendars.filter(
-        (cal) => cal.type === CalendarType.LOCAL,
+      const countOfCampusClockCalendars = allCalendars.filter(
+        (cal) => cal.calendarAccount.provider === "campusClock",
       ).length;
 
-      if (countOfLocalCalendars === 1) {
-        throw new Error("Cannot delete the only local calendar");
+      if (countOfCampusClockCalendars === 1) {
+        throw new Error("Cannot delete the only campusClock calendar");
       }
     }
 
@@ -156,94 +175,88 @@ export class CalendarService {
 
   /**
    * Get all calendars with their events for a user within a date range
-   * Handles both local and external calendars with weekly chunk caching
+   * Groups calendars by provider (campusClock, google, etc.) for efficient fetching
+   * Uses weekly chunk caching for performance
    */
   async getAllCalendarsWithEvents(
     userId: string,
     start: Date,
     end: Date,
-  ): Promise<CalendarWithEvents[]> {
-    // Always fetch calendar metadata fresh from DB (no caching)
-    const calendars = await this.db.calendar.findMany({
+  ): Promise<CalendarWithEventsAndAccount[]> {
+    // Fetch calendar accounts with their calendars
+    const calendarAccounts = await this.db.calendarAccount.findMany({
       where: { userId },
+      include: { calendars: true },
     });
 
     // Get all weeks in the requested range
     const weeks = this.getWeeksInRange(start, end);
-    
+
     // Fetch events for each week (cached)
-    const allWeekCalendarsData: CalendarWithEvents[][] = [];
+    const allWeekCalendarsData: CalendarWithEventsAndAccount[][] = [];
 
     for (const weekStart of weeks) {
       const weekBounds = this.getWeekBounds(weekStart);
       const cacheKey = this.generateWeekKey(userId, weekStart);
 
       // Try to get from cache first
-      const cachedData = await this.cache.get<CalendarWithEvents[]>(cacheKey);
+      const cachedData =
+        await this.cache.get<CalendarWithEventsAndAccount[]>(cacheKey);
 
       if (cachedData) {
         allWeekCalendarsData.push(cachedData);
       } else {
         // Cache miss - fetch events for this week
-        const weekCalendarsWithEvents: CalendarWithEvents[] = [];
+        const eventsMap = new Map<string, Omit<Event, "calendar" | "task">[]>();
 
-        // Separate local and external calendars
-        const localCalendars = calendars.filter(
-          (cal) => cal.type === CalendarType.LOCAL,
-        );
-        const externalCalendars = calendars.filter(
-          (cal) => cal.type === CalendarType.EXTERNAL && cal.provider === CalendarProvider.GOOGLE,
-        );
-
-        // Fetch local events from DB
-        const localEventsPromises = localCalendars.map(async (calendar) => {
-          const localEvents = await this.db.event.findMany({
-            where: {
-              calendarId: calendar.id,
-              // Events that overlap with this week
-              start: { lt: weekBounds.end },
-              end: { gt: weekBounds.start },
-            },
-          });
-          return { calendar, events: localEvents };
-        });
-
-        // Fetch external events in parallel
-        let externalEventsMap = new Map<string, Omit<Event, "calendar" | "task">[]>();
-        if (externalCalendars.length > 0) {
-          try {
-            externalEventsMap = await this.gCalService.getEventsFromCalendars(
-              userId,
-              externalCalendars,
-              weekBounds.start,
-              weekBounds.end,
-            );
-          } catch (error) {
-            console.warn(
-              `Failed to fetch events from external calendars:`,
-              error,
-            );
-            // Continue with empty events
+        // Process each calendar account based on provider
+        for (const account of calendarAccounts) {
+          if (account.provider === "campusClock") {
+            // Fetch events from database for each calendar
+            for (const calendar of account.calendars) {
+              const events = await this.db.event.findMany({
+                where: {
+                  calendarId: calendar.id,
+                  start: { lt: weekBounds.end },
+                  end: { gt: weekBounds.start },
+                },
+              });
+              eventsMap.set(calendar.id, events);
+            }
+          } else if (account.provider === "google") {
+            // Fetch events from Google Calendar
+            try {
+              const accountEventsMap =
+                await this.gCalService.getAllEventsFromCalendarAccount(
+                  account,
+                  weekBounds.start,
+                  weekBounds.end,
+                );
+              // Add to events map
+              for (const [calendarId, events] of accountEventsMap) {
+                eventsMap.set(calendarId, events);
+              }
+            } catch (error) {
+              console.warn(
+                `Failed to fetch events from Google calendar account ${account.id}:`,
+                error,
+              );
+              // Continue with empty events for this account
+            }
           }
+          // Future providers (Outlook, Apple Calendar, etc.) can be added here
         }
 
-        // Wait for all local events to be fetched
-        const localResults = await Promise.all(localEventsPromises);
-
-        // Combine local results
-        for (const { calendar, events } of localResults) {
-          weekCalendarsWithEvents.push({
-            ...calendar,
-            events,
-          });
-        }
-
-        // Combine external results
-        for (const calendar of externalCalendars) {
-          weekCalendarsWithEvents.push({
-            ...calendar,
-            events: externalEventsMap.get(calendar.id) ?? [],
-          });
+        // Flatten to calendar-centric view with events
+        const weekCalendarsWithEvents: CalendarWithEventsAndAccount[] = [];
+        for (const account of calendarAccounts) {
+          for (const calendar of account.calendars) {
+            weekCalendarsWithEvents.push({
+              ...calendar,
+              events: eventsMap.get(calendar.id) ?? [],
+              calendarAccount: account,
+            });
+          }
         }
 
         // Cache the result for this week
@@ -253,7 +266,7 @@ export class CalendarService {
     }
 
     // Merge all weeks and filter to exact requested date range
-    const mergedCalendars = new Map<string, CalendarWithEvents>();
+    const mergedCalendars = new Map<string, CalendarWithEventsAndAccount>();
 
     for (const weekData of allWeekCalendarsData) {
       for (const calendarData of weekData) {
@@ -270,8 +283,8 @@ export class CalendarService {
     }
 
     // Filter events to exact requested date range and remove duplicates
-    const result: CalendarWithEvents[] = [];
-    
+    const result: CalendarWithEventsAndAccount[] = [];
+
     for (const calendar of mergedCalendars.values()) {
       // Filter to exact date range
       const filteredEvents = calendar.events.filter(

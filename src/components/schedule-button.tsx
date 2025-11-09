@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarType } from "@prisma/client";
 
 export function ScheduleButton() {
   const [showPreview, setShowPreview] = useState(false);
@@ -102,10 +101,10 @@ export function ScheduleButton() {
     },
   });
 
-  // Find a writable calendar (prefer local, non-read-only)
+  // Find a writable calendar (prefer campusClock, non-read-only)
   const writableCalendar =
     calendars?.find(
-      (cal) => cal.type === CalendarType.LOCAL && !cal.readOnly,
+      (cal) => cal.calendarAccount.provider === "campusClock" && !cal.readOnly,
     ) ?? calendars?.find((cal) => !cal.readOnly);
 
   const handlePreviewSchedule = () => {
@@ -346,4 +345,3 @@ export function ScheduleButton() {
     </>
   );
 }
-

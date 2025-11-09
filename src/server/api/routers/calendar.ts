@@ -1,27 +1,16 @@
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { GCalService } from "@/server/api/services/g-cal-service";
-import { CalendarType } from "@prisma/client";
 import { CalendarService } from "@/server/api/services/calendar-service";
 import { EventService } from "@/server/api/services/event-service";
-import {
-  CreateEventSchema,
-  UpdateEventSchema,
-} from "@/lib/zod";
+import { CreateEventSchema, UpdateEventSchema } from "@/lib/zod";
 
 export const calendarRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
     const calendars = await ctx.db.calendar.findMany({
       where: { userId: ctx.session.user.id },
+      include: { calendarAccount: true },
     });
-    const hasLocalCalendar = calendars.some(
-      (calendar) => calendar.type === CalendarType.LOCAL,
-    );
-    if (!hasLocalCalendar) {
-      const calendarService = new CalendarService(ctx.db);
-      await calendarService.createCalendar(ctx.session.user.id);
-    }
     return calendars;
   }),
 
@@ -37,12 +26,14 @@ export const calendarRouter = createTRPCRouter({
           .string()
           .regex(/^#[0-9A-F]{6}$/i)
           .optional(),
+        calendarAccountId: z.string().uuid(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const calendarService = new CalendarService(ctx.db);
       return await calendarService.createCalendar(
         ctx.session.user.id,
+        input.calendarAccountId,
         input.name,
         input.backgroundColor,
         input.foregroundColor,
@@ -98,11 +89,6 @@ export const calendarRouter = createTRPCRouter({
         },
       });
     }),
-
-  importGoogleCalendars: protectedProcedure.mutation(async ({ ctx }) => {
-    const gCalService = new GCalService(ctx.db);
-    return await gCalService.syncGoogleCalendars(ctx.session.user.id);
-  }),
 
   // New unified endpoints
   getAllCalendarsWithUnifiedEvents: protectedProcedure
