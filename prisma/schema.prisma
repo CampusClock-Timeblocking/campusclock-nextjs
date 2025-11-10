@@ -28,6 +28,7 @@ model User {
   schedulingConfig   SchedulingConfig?
   workingPreferences WorkingPreferences?
   excludedPeriods    ExcludedPeriod[]
+  calendarAccounts   CalendarAccount[]
   Calendars          Calendar[]
 
   @@unique([email])
@@ -178,25 +179,55 @@ model Habit {
   @@map("habits")
 }
 
+model CalendarAccount {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Common
+  email     String?
+  name      String?
+  calendars Calendar[]
+
+  provider          String
+  providerAccountId String
+
+  // OAuth (nullable)
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime?
+  scope        String?   @db.Text
+
+  // CalDAV (nullable)
+  encryptedPassword String? @db.Text
+  calDavUrl         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider, providerAccountId])
+  @@index([userId])
+}
+
 model Calendar {
   id              String @id @default(uuid())
   name            String
   backgroundColor String
   foregroundColor String
 
-  type CalendarType @default(LOCAL)
-
-  provider   CalendarProvider?
+  type       CalendarType @default(LOCAL)
   externalId String?
-  readOnly   Boolean           @default(true)
+  readOnly   Boolean      @default(true)
 
   userId String
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   Event  Event[]
 
-  @@unique([userId, provider, externalId])
+  calendarAccountId String
+  calendarAccount   CalendarAccount @relation(fields: [calendarAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, calendarAccountId, externalId])
   @@index([userId, type])
-  @@index([provider, externalId])
   @@map("calendars")
 }
 
@@ -205,12 +236,6 @@ enum CalendarType {
   EXTERNAL
 
   @@map("calendar_type")
-}
-
-enum CalendarProvider {
-  GOOGLE
-
-  @@map("calendar_provider")
 }
 
 model Event {
@@ -226,8 +251,8 @@ model Event {
   // Relationships
 
   calendarId String
-  calendar   Calendar @relation(fields: [calendarId], references: [id])
-
+  calendar   Calendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+ 
   taskId String?
   task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
@@ -270,11 +295,11 @@ model WorkingPreferences {
   id String @id @default(uuid())
 
   // Hours + availability
-  earliestTime        DateTime @db.Time() // REVIEW: Working hours could be extracted into own model to allow multiple time ranges
-  latestTime          DateTime @db.Time()
-  dailyMaxMinutes     Int      @default(600) // absolute cap
-  dailyOptimalMinutes Int      @default(480) // ideal working time
-  workingDays         Weekday[]    @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY])
+  earliestTime        DateTime  @db.Time() // REVIEW: Working hours could be extracted into own model to allow multiple time ranges
+  latestTime          DateTime  @db.Time()
+  dailyMaxMinutes     Int       @default(600) // absolute cap
+  dailyOptimalMinutes Int       @default(480) // ideal working time
+  workingDays         Weekday[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY])
 
   // Rhythm + breaks
   focusPeriodMinutes Int @default(60) // duration of focus sessions

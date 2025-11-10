@@ -1,0 +1,136 @@
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
+import {
+  CalendarAccountLayout,
+  type CalendarAccountProps,
+} from "./calendar-account";
+import { api } from "@/trpc/react";
+import { toast } from "sonner";
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { RiDeleteBinLine, RiAppleFill } from "@remixicon/react";
+import { AsyncButton } from "@/components/basic-components/async-action-button";
+import { Trash2 } from "lucide-react";
+
+export function ICloudCalendarAccount({ account }: CalendarAccountProps) {
+  const utils = api.useUtils();
+  const { confirm } = useConfirmationDialog();
+  const syncCalendarsMutation = api.calendarAccount.syncCalendars.useMutation({
+    onSuccess: async () => {
+      await utils.calendar.invalidate();
+      await utils.calendarAccount.invalidate();
+    },
+  });
+
+  const { mutateAsync: deleteCalendar } = api.calendar.delete.useMutation({
+    onSuccess: async () => {
+      await utils.calendar.invalidate();
+      await utils.calendarAccount.invalidate();
+    },
+  });
+
+  const deleteAccountMutation = api.calendarAccount.delete.useMutation({
+    onSuccess: async () => {
+      await utils.calendar.invalidate();
+      await utils.calendarAccount.invalidate();
+    },
+  });
+
+  const onSyncCalendars = () => {
+    toast.promise(syncCalendarsMutation.mutateAsync({ id: account.id }), {
+      loading: "Syncing iCloud calendars...",
+      success: "iCloud calendars synced.",
+      error: (err: Error) => {
+        return err?.message ?? "Something went wrong";
+      },
+    });
+  };
+
+  const handleDeleteCalendar = async (calendarId: string) => {
+    const confirmed = await confirm({
+      title: "Are you sure you want to remove this calendar?",
+      description:
+        "The calendar will be removed from CampusClock, but will remain in your iCloud account. To re-add it, simply sync your iCloud calendars again.",
+      confirmText: "Remove from CampusClock",
+      cancelText: "Cancel",
+      variant: "destructive",
+    });
+    if (confirmed) {
+      toast.promise(deleteCalendar({ id: calendarId }), {
+        loading: "Removing calendar from CampusClock...",
+        success: "Calendar removed from CampusClock.",
+        error: (err: Error) => {
+          return err?.message ?? "Something went wrong";
+        },
+      });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = await confirm({
+      title: "Are you sure you want to disconnect this iCloud account?",
+      description:
+        "All calendars from this account will be removed from CampusClock. Your iCloud calendars will remain unchanged.",
+      confirmText: "Disconnect Account",
+      cancelText: "Cancel",
+      variant: "destructive",
+    });
+    if (confirmed) {
+      toast.promise(deleteAccountMutation.mutateAsync({ id: account.id }), {
+        loading: "Disconnecting iCloud account...",
+        success: "iCloud account disconnected.",
+        error: (err: Error) => {
+          return err?.message ?? "Something went wrong";
+        },
+      });
+    }
+  };
+
+  const iCloudCalendarMenueContent = (id: string) => {
+    return (
+      <DropdownMenuContent align="end" className="w-[200px]">
+        <DropdownMenuItem
+          onClick={() => handleDeleteCalendar(id)}
+          className="text-destructive gap-2"
+        >
+          <RiDeleteBinLine className="h-4 w-4" />
+          Remove Calendar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    );
+  };
+
+  return (
+    <CalendarAccountLayout
+      title="iCloud Calendar"
+      description={
+        account.email ?? account.name ?? "CampusClock Calendar Account"
+      }
+      action={
+        <div className="flex items-center gap-2">
+          <AsyncButton
+            variant="ghost"
+            size="sm"
+            onClick={handleDeleteAccount}
+            isLoading={deleteAccountMutation.isPending}
+            className="hover:text-destructive text-muted-foreground gap-2 !px-2"
+          >
+            <Trash2 />
+          </AsyncButton>
+          <AsyncButton
+            variant="outline"
+            onClick={onSyncCalendars}
+            isLoading={syncCalendarsMutation.isPending}
+          >
+            <RiAppleFill />
+            Sync Calendars
+          </AsyncButton>
+        </div>
+      }
+      calendars={account.calendars}
+      provider={account.provider}
+      menuContent={iCloudCalendarMenueContent}
+    />
+  );
+}

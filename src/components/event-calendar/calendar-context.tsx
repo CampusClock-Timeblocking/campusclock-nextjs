@@ -9,7 +9,6 @@ import React, {
   type ReactNode,
 } from "react";
 import { api } from "@/trpc/react";
-import { type Calendar, type Event } from "@prisma/client";
 import {
   addWeeks,
   endOfMonth,
@@ -20,6 +19,8 @@ import {
   addMonths,
 } from "date-fns";
 import type { CalendarView } from "@/components/event-calendar/types";
+import type { Event } from "@prisma/client";
+import type { CalendarWithEventsAndAccount } from "@/server/api/services/calendar-service";
 
 interface CalendarContextType {
   // Date management
@@ -35,10 +36,12 @@ interface CalendarContextType {
   toggleCalendarVisibility: (calendarId: string) => void;
   isCalendarVisible: (calendarId: string) => boolean;
 
-  // Calendars
-  calendars: Calendar[] | undefined;
+  // Calendars with events
+  calendars: CalendarWithEventsAndAccount[] | undefined;
 
+  // Flattened events from all calendars
   events: Omit<Event, "calendar" | "task">[] | undefined;
+
   startDate: Date;
   endDate: Date;
 }
@@ -116,21 +119,6 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
   const startDate = dateRange.startDate;
   const endDate = dateRange.endDate;
 
-  const { data: calendars } = api.calendar.getAllWithEvents.useQuery(
-    {
-      start: startDate,
-      end: endDate,
-    },
-    {
-      // Keep showing previous data while fetching new data
-      placeholderData: (previousData) => previousData,
-      // Consider data fresh for 2 minutes (matches Redis cache TTL)
-      staleTime: 2 * 60 * 1000, // 2 minutes
-      // Keep inactive data in cache for 5 minutes
-      gcTime: 5 * 60 * 1000, // 5 minutes
-    },
-  );
-
   const getAllCalendarsWithEvents =
     api.calendar.getAllCalendarsWithUnifiedEvents.useQuery(
       {
@@ -147,9 +135,12 @@ export function CalendarProvider({ children }: CalendarProviderProps) {
       },
     );
 
+  const calendars = getAllCalendarsWithEvents.data;
+
+  // Flatten events from all calendars
   const events = React.useMemo(
-    () => getAllCalendarsWithEvents.data?.flatMap((cal) => cal.events) ?? [],
-    [getAllCalendarsWithEvents.data],
+    () => calendars?.flatMap((cal) => cal.events) ?? [],
+    [calendars],
   );
 
   const [visibleCalendars, setVisibleCalendars] = useState<string[]>([]);
