@@ -8,6 +8,9 @@ CREATE TYPE "project_status" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED',
 CREATE TYPE "calendar_type" AS ENUM ('LOCAL', 'EXTERNAL');
 
 -- CreateEnum
+CREATE TYPE "calendar_provider" AS ENUM ('GOOGLE');
+
+-- CreateEnum
 CREATE TYPE "ReschedulingPolicy" AS ENUM ('EVENT_BASED', 'DAILY_INTERVAL', 'MANUAL_TRIGGER');
 
 -- CreateEnum
@@ -15,9 +18,6 @@ CREATE TYPE "Weekday" AS ENUM ('SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THUR
 
 -- CreateEnum
 CREATE TYPE "PeriodUnit" AS ENUM ('DAY', 'WEEK', 'MONTH', 'YEAR');
-
--- CreateEnum
-CREATE TYPE "calendar_provider" AS ENUM ('GOOGLE');
 
 -- CreateTable
 CREATE TABLE "user" (
@@ -82,15 +82,15 @@ CREATE TABLE "projects" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "deadline" TIMESTAMP(3),
-    "userId" TEXT NOT NULL,
-    "completedAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "parentId" TEXT,
     "priority" INTEGER,
     "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deadline" TIMESTAMP(3),
     "status" "project_status" NOT NULL DEFAULT 'NOT_STARTED',
+    "userId" TEXT NOT NULL,
+    "parentId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "completedAt" TIMESTAMP(3),
 
     CONSTRAINT "projects_pkey" PRIMARY KEY ("id")
 );
@@ -98,17 +98,17 @@ CREATE TABLE "projects" (
 -- CreateTable
 CREATE TABLE "tasks" (
     "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
     "description" TEXT,
     "status" "task_status" NOT NULL DEFAULT 'TO_DO',
+    "durationMinutes" INTEGER,
     "priority" INTEGER,
     "complexity" INTEGER,
     "due" TIMESTAMP(3),
     "scheduledTime" TEXT,
-    "projectId" TEXT,
     "userId" TEXT NOT NULL,
-    "durationMinutes" INTEGER,
+    "projectId" TEXT,
     "habitId" TEXT,
-    "title" TEXT NOT NULL,
 
     CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
 );
@@ -117,17 +117,17 @@ CREATE TABLE "tasks" (
 CREATE TABLE "habits" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
-    "durationMinutes" INTEGER,
-    "active" BOOLEAN NOT NULL DEFAULT true,
-    "userId" TEXT NOT NULL,
-    "byWeekdays" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-    "customRule" JSONB,
     "description" TEXT,
-    "interval" INTEGER NOT NULL DEFAULT 1,
+    "durationMinutes" INTEGER,
     "priority" INTEGER,
+    "active" BOOLEAN NOT NULL DEFAULT true,
     "recurrenceType" "PeriodUnit" NOT NULL,
+    "interval" INTEGER NOT NULL DEFAULT 1,
     "timesPerPeriod" INTEGER NOT NULL DEFAULT 1,
-    "preferredTime" TIME(6),
+    "byWeekdays" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+    "preferredTime" TIME,
+    "customRule" JSONB,
+    "userId" TEXT NOT NULL,
 
     CONSTRAINT "habits_pkey" PRIMARY KEY ("id")
 );
@@ -189,17 +189,17 @@ CREATE TABLE "SchedulingConfig" (
 -- CreateTable
 CREATE TABLE "WorkingPreferences" (
     "id" TEXT NOT NULL,
-    "earliestTime" TIME(6) NOT NULL,
-    "latestTime" TIME(6) NOT NULL,
+    "earliestTime" TIME NOT NULL,
+    "latestTime" TIME NOT NULL,
     "dailyMaxMinutes" INTEGER NOT NULL DEFAULT 600,
     "dailyOptimalMinutes" INTEGER NOT NULL DEFAULT 480,
+    "workingDays" "Weekday"[] DEFAULT ARRAY['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']::"Weekday"[],
     "focusPeriodMinutes" INTEGER NOT NULL DEFAULT 60,
     "shortBreakMinutes" INTEGER NOT NULL DEFAULT 15,
     "longBreakMinutes" INTEGER NOT NULL DEFAULT 60,
     "longBreakFrequency" INTEGER NOT NULL DEFAULT 3,
     "alertnessByHour" DOUBLE PRECISION[],
     "userId" TEXT NOT NULL,
-    "workingDays" "Weekday"[] DEFAULT ARRAY['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']::"Weekday"[],
 
     CONSTRAINT "WorkingPreferences_pkey" PRIMARY KEY ("id")
 );
@@ -224,9 +224,6 @@ CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
 
 -- CreateIndex
 CREATE INDEX "projects_userId_status_idx" ON "projects"("userId", "status");
-
--- CreateIndex
-CREATE UNIQUE INDEX "projects_userId_title_key" ON "projects"("userId", "title");
 
 -- CreateIndex
 CREATE INDEX "habits_userId_idx" ON "habits"("userId");
@@ -262,19 +259,19 @@ ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId"
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "projects" ADD CONSTRAINT "projects_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "projects"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "projects" ADD CONSTRAINT "projects_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "habits"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "projects" ADD CONSTRAINT "projects_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "projects"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "habits"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "habits" ADD CONSTRAINT "habits_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
