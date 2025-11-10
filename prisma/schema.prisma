@@ -119,7 +119,6 @@ model Project {
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
 
-  @@unique([userId, title])
   @@index([userId, status])
   @@map("projects")
 }
