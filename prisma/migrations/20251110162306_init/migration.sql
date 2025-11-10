@@ -5,10 +5,19 @@ CREATE TYPE "task_status" AS ENUM ('TO_DO', 'SNOOZED', 'SKIPPED', 'IN_PROGRESS',
 CREATE TYPE "project_status" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
 
 -- CreateEnum
+CREATE TYPE "calendar_type" AS ENUM ('LOCAL', 'EXTERNAL');
+
+-- CreateEnum
 CREATE TYPE "ReschedulingPolicy" AS ENUM ('EVENT_BASED', 'DAILY_INTERVAL', 'MANUAL_TRIGGER');
 
 -- CreateEnum
+CREATE TYPE "Weekday" AS ENUM ('SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY');
+
+-- CreateEnum
 CREATE TYPE "PeriodUnit" AS ENUM ('DAY', 'WEEK', 'MONTH', 'YEAR');
+
+-- CreateEnum
+CREATE TYPE "calendar_provider" AS ENUM ('GOOGLE');
 
 -- CreateTable
 CREATE TABLE "user" (
@@ -73,15 +82,15 @@ CREATE TABLE "projects" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
+    "deadline" TIMESTAMP(3),
+    "userId" TEXT NOT NULL,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "parentId" TEXT,
     "priority" INTEGER,
     "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deadline" TIMESTAMP(3),
     "status" "project_status" NOT NULL DEFAULT 'NOT_STARTED',
-    "userId" TEXT NOT NULL,
-    "parentId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "completedAt" TIMESTAMP(3),
 
     CONSTRAINT "projects_pkey" PRIMARY KEY ("id")
 );
@@ -89,17 +98,17 @@ CREATE TABLE "projects" (
 -- CreateTable
 CREATE TABLE "tasks" (
     "id" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
     "description" TEXT,
     "status" "task_status" NOT NULL DEFAULT 'TO_DO',
-    "durationMinutes" INTEGER,
     "priority" INTEGER,
     "complexity" INTEGER,
     "due" TIMESTAMP(3),
     "scheduledTime" TEXT,
-    "userId" TEXT NOT NULL,
     "projectId" TEXT,
+    "userId" TEXT NOT NULL,
+    "durationMinutes" INTEGER,
     "habitId" TEXT,
+    "title" TEXT NOT NULL,
 
     CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
 );
@@ -108,29 +117,50 @@ CREATE TABLE "tasks" (
 CREATE TABLE "habits" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
-    "description" TEXT,
     "durationMinutes" INTEGER,
-    "priority" INTEGER,
     "active" BOOLEAN NOT NULL DEFAULT true,
-    "recurrenceType" "PeriodUnit" NOT NULL,
-    "interval" INTEGER NOT NULL DEFAULT 1,
-    "timesPerPeriod" INTEGER NOT NULL DEFAULT 1,
-    "byWeekdays" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-    "preferredTime" TIME,
-    "customRule" JSONB,
     "userId" TEXT NOT NULL,
+    "byWeekdays" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+    "customRule" JSONB,
+    "description" TEXT,
+    "interval" INTEGER NOT NULL DEFAULT 1,
+    "priority" INTEGER,
+    "recurrenceType" "PeriodUnit" NOT NULL,
+    "timesPerPeriod" INTEGER NOT NULL DEFAULT 1,
+    "preferredTime" TIME(6),
 
     CONSTRAINT "habits_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "schedule_blocks" (
+CREATE TABLE "calendars" (
     "id" TEXT NOT NULL,
-    "startTime" TIMESTAMP(3) NOT NULL,
-    "endTime" TIMESTAMP(3) NOT NULL,
-    "taskId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "backgroundColor" TEXT NOT NULL,
+    "foregroundColor" TEXT NOT NULL,
+    "type" "calendar_type" NOT NULL DEFAULT 'LOCAL',
+    "provider" "calendar_provider",
+    "externalId" TEXT,
+    "readOnly" BOOLEAN NOT NULL DEFAULT true,
+    "userId" TEXT NOT NULL,
 
-    CONSTRAINT "schedule_blocks_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "calendars_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "events" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "start" TIMESTAMP(3) NOT NULL,
+    "end" TIMESTAMP(3) NOT NULL,
+    "allDay" BOOLEAN NOT NULL DEFAULT false,
+    "color" TEXT NOT NULL,
+    "location" TEXT,
+    "calendarId" TEXT NOT NULL,
+    "taskId" TEXT,
+
+    CONSTRAINT "events_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -159,17 +189,17 @@ CREATE TABLE "SchedulingConfig" (
 -- CreateTable
 CREATE TABLE "WorkingPreferences" (
     "id" TEXT NOT NULL,
-    "earliestTime" TIME NOT NULL,
-    "latestTime" TIME NOT NULL,
+    "earliestTime" TIME(6) NOT NULL,
+    "latestTime" TIME(6) NOT NULL,
     "dailyMaxMinutes" INTEGER NOT NULL DEFAULT 600,
     "dailyOptimalMinutes" INTEGER NOT NULL DEFAULT 480,
-    "workingDays" INTEGER[] DEFAULT ARRAY[0, 1, 2, 3, 4, 5, 6]::INTEGER[],
     "focusPeriodMinutes" INTEGER NOT NULL DEFAULT 60,
     "shortBreakMinutes" INTEGER NOT NULL DEFAULT 15,
     "longBreakMinutes" INTEGER NOT NULL DEFAULT 60,
     "longBreakFrequency" INTEGER NOT NULL DEFAULT 3,
     "alertnessByHour" DOUBLE PRECISION[],
     "userId" TEXT NOT NULL,
+    "workingDays" "Weekday"[] DEFAULT ARRAY['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']::"Weekday"[],
 
     CONSTRAINT "WorkingPreferences_pkey" PRIMARY KEY ("id")
 );
@@ -196,13 +226,22 @@ CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
 CREATE INDEX "projects_userId_status_idx" ON "projects"("userId", "status");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "projects_userId_title_key" ON "projects"("userId", "title");
+
+-- CreateIndex
 CREATE INDEX "habits_userId_idx" ON "habits"("userId");
 
 -- CreateIndex
 CREATE INDEX "habits_userId_active_idx" ON "habits"("userId", "active");
 
 -- CreateIndex
-CREATE INDEX "schedule_blocks_taskId_idx" ON "schedule_blocks"("taskId");
+CREATE INDEX "calendars_userId_type_idx" ON "calendars"("userId", "type");
+
+-- CreateIndex
+CREATE INDEX "calendars_provider_externalId_idx" ON "calendars"("provider", "externalId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "calendars_userId_provider_externalId_key" ON "calendars"("userId", "provider", "externalId");
 
 -- CreateIndex
 CREATE INDEX "task_completions_taskId_idx" ON "task_completions"("taskId");
@@ -223,25 +262,31 @@ ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId"
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "projects" ADD CONSTRAINT "projects_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "projects" ADD CONSTRAINT "projects_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "projects"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "projects" ADD CONSTRAINT "projects_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_habitId_fkey" FOREIGN KEY ("habitId") REFERENCES "habits"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tasks" ADD CONSTRAINT "tasks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "habits" ADD CONSTRAINT "habits_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "schedule_blocks" ADD CONSTRAINT "schedule_blocks_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "tasks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "calendars" ADD CONSTRAINT "calendars_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "events" ADD CONSTRAINT "events_calendarId_fkey" FOREIGN KEY ("calendarId") REFERENCES "calendars"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "events" ADD CONSTRAINT "events_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "tasks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "task_completions" ADD CONSTRAINT "task_completions_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "tasks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -254,3 +299,4 @@ ALTER TABLE "WorkingPreferences" ADD CONSTRAINT "WorkingPreferences_userId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "excluded_periods" ADD CONSTRAINT "excluded_periods_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
