@@ -23,7 +23,7 @@ export class CalendarAccountService {
     const calendarAccount = await this.db.calendarAccount.create({
       data: {
         userId,
-        provider: "campusClock",
+        provider: "campusclock",
         email: userEmail,
         name: "CampusClock",
         providerAccountId: `campusClock-${userId}`,

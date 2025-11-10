@@ -92,7 +92,7 @@ export class CalendarService {
       throw new Error("Calendar account not found");
     }
 
-    if (calendarAccount.provider !== "campusClock") {
+    if (calendarAccount.provider !== "campusclock") {
       throw new Error("Can only create calendars for campusClock accounts");
     }
 
@@ -149,14 +149,14 @@ export class CalendarService {
     }
 
     // Prevent deletion of the last campusClock calendar
-    if (calendar.calendarAccount.provider === "campusClock") {
+    if (calendar.calendarAccount.provider === "campusclock") {
       const allCalendars = await this.db.calendar.findMany({
         where: { userId },
         include: { calendarAccount: true },
       });
 
       const countOfCampusClockCalendars = allCalendars.filter(
-        (cal) => cal.calendarAccount.provider === "campusClock",
+        (cal) => cal.calendarAccount.provider === "campusclock",
       ).length;
 
       if (countOfCampusClockCalendars === 1) {
@@ -213,7 +213,7 @@ export class CalendarService {
 
         // Process each calendar account based on provider
         for (const account of calendarAccounts) {
-          if (account.provider === "campusClock") {
+          if (account.provider === "campusclock") {
             // Fetch events from database for each calendar
             for (const calendar of account.calendars) {
               const events = await this.db.event.findMany({

@@ -21,7 +21,7 @@ export function CalendarAccount({ account }: CalendarAccountProps) {
       return <GoogleCalendarAccount account={account} />;
     case "iCloud":
       return <ICloudCalendarAccount account={account} />;
-    case "campusClock":
+    case "campusclock":
       return <CampusClockCalendarAccount account={account} />;
     default:
       return null;
@@ -83,7 +83,7 @@ export function getPoviderIcon(provider: string, size: number) {
       return <RiGoogleFill size={size} />;
     case "iCloud":
       return <RiAppleFill size={size} />;
-    case "campusClock":
+    case "campusclock":
       return <Clock size={size} />;
     default:
       return <CalendarFold size={size} />;

@@ -115,8 +115,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       const accountB = calendarsB[0]?.calendarAccount;
 
                       // CampusClock account always on top
-                      if (accountA?.provider === "campusClock") return -1;
-                      if (accountB?.provider === "campusClock") return 1;
+                      if (accountA?.provider === "campusclock") return -1;
+                      if (accountB?.provider === "campusclock") return 1;
 
                       return 0;
                     })

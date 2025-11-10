@@ -126,13 +126,13 @@ export function EventDialog({
     ? calendars?.find((cal) => cal.id === selectedCalendarId)
     : calendars?.find(
         (cal) =>
-          cal.calendarAccount.provider === "campusClock" ||
+          cal.calendarAccount.provider === "campusclock" ||
           cal.readOnly === false,
       );
 
   // Check if this event is from an external/read-only calendar
   const isExternalCalendar =
-    eventCalendar?.calendarAccount.provider !== "campusClock" ||
+    eventCalendar?.calendarAccount.provider !== "campusclock" ||
     eventCalendar?.readOnly === true;
 
   const allDay = form.watch("allDay");
@@ -187,7 +187,7 @@ export function EventDialog({
 
       // For new events (no ID), auto-select first campusClock calendar if not already set
       const firstCampusClockCalendar = calendars?.find(
-        (cal) => cal.calendarAccount.provider === "campusClock",
+        (cal) => cal.calendarAccount.provider === "campusclock",
       );
       const calendarId = event.calendarId
         ? event.calendarId
@@ -208,7 +208,7 @@ export function EventDialog({
     } else {
       // For null event state, default to first campusClock calendar if available
       const firstCampusClockCalendar = calendars?.find(
-        (cal) => cal.calendarAccount.provider === "campusClock",
+        (cal) => cal.calendarAccount.provider === "campusclock",
       );
       form.reset({
         title: "",
@@ -453,11 +453,11 @@ export function EventDialog({
                 render={({ field }) => {
                   const campusClockCalendars =
                     calendars?.filter(
-                      (cal) => cal.calendarAccount.provider === "campusClock",
+                      (cal) => cal.calendarAccount.provider === "campusclock",
                     ) ?? [];
                   const externalCalendars =
                     calendars?.filter(
-                      (cal) => cal.calendarAccount.provider !== "campusClock",
+                      (cal) => cal.calendarAccount.provider !== "campusclock",
                     ) ?? [];
                   const selectedCalendar = calendars?.find(
                     (cal) => cal.id === field.value,
@@ -544,7 +544,7 @@ export function EventDialog({
                                     <span className="truncate">
                                       {calendar.name}
                                       {calendar.calendarAccount.provider !==
-                                        "campusClock" &&
+                                        "campusclock" &&
                                         ` (${calendar.calendarAccount.provider})`}
                                     </span>
                                   </div>

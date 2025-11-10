@@ -70,7 +70,7 @@ function CalendarFormDialogContent({
   // Get the CampusClock calendar account
   const { data: calendarAccounts } = api.calendarAccount.getAll.useQuery();
   const campusClockAccount = calendarAccounts?.find(
-    (account) => account.provider === "campusClock",
+    (account) => account.provider === "campusclock",
   );
 
   const { mutateAsync: createCalendar, isPending: isCreating } =

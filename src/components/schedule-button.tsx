@@ -104,7 +104,7 @@ export function ScheduleButton() {
   // Find a writable calendar (prefer campusClock, non-read-only)
   const writableCalendar =
     calendars?.find(
-      (cal) => cal.calendarAccount.provider === "campusClock" && !cal.readOnly,
+      (cal) => cal.calendarAccount.provider === "campusclock" && !cal.readOnly,
     ) ?? calendars?.find((cal) => !cal.readOnly);
 
   const handlePreviewSchedule = () => {
