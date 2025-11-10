@@ -18,8 +18,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!session && !isPublicRoute) {
+    const callbackPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
     const newUrl = new URL(
-      `/auth/sign-in?callbackUrl=${encodeURIComponent(request.nextUrl.href)}`,
+      `/auth/sign-in?callbackUrl=${encodeURIComponent(callbackPath)}`,
       request.nextUrl.origin,
     );
     return Response.redirect(newUrl);
