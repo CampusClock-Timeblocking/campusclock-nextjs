@@ -22,8 +22,8 @@ export const env = createEnv({
     KV_REST_API_TOKEN: z.string(),
     KV_REST_API_READ_ONLY_TOKEN: z.string(),
     REDIS_URL: z.string(),
-    // Scheduler solver service
-    SOLVER_SERVICE_URL: z.url(),
+    // Scheduler solver service (optional — EA runs in-process, no external service needed)
+    SOLVER_SERVICE_URL: z.string().url().optional(),
     SOLVER_TIMEOUT_MS: z.string().default("10000"),
     OPENAI_API_KEY: z.string().optional(),
   },

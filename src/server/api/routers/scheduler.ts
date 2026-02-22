@@ -7,7 +7,6 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { SchedulerService } from "../services/scheduler-service";
-import { env } from "@/env";
 export const schedulerRouter = createTRPCRouter({
   /**
    * Schedule tasks for the current user
@@ -202,35 +201,11 @@ export const schedulerRouter = createTRPCRouter({
   }),
 
   /**
-   * Check if the solver service is available
+   * Check if the scheduler is available.
+   * The evolutionary algorithm runs in-process — always available.
    */
-  checkSolverHealth: protectedProcedure.query(async () => {
-    const solverUrl = env.SOLVER_SERVICE_URL;
-
-    try {
-      const response = await fetch(`${solverUrl}/health`, {
-        method: "GET",
-        signal: AbortSignal.timeout(3000),
-      });
-
-      if (!response.ok) {
-        return {
-          available: false,
-          error: `Solver returned status ${response.status}`,
-        };
-      }
-
-      return {
-        available: true,
-        url: solverUrl,
-      };
-    } catch (error) {
-      return {
-        available: false,
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      };
-    }
+  checkSolverHealth: protectedProcedure.query(async (): Promise<{ available: boolean; error?: string }> => {
+    return { available: true };
   }),
 });
 

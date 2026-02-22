@@ -2,25 +2,26 @@
  * ============================================================================
  * SCHEDULER LIBRARY - Main Entry Point
  * ============================================================================
- * 
- * A timeblocking scheduler that uses constraint programming to optimally
+ *
+ * A timeblocking scheduler that uses an evolutionary algorithm to optimally
  * schedule tasks based on:
  * - User priorities and deadlines
  * - Available working hours
  * - Existing calendar commitments (busy slots)
  * - Energy levels throughout the day
  * - Task complexity and location
- * 
+ *
  * ## Quick Start
- * 
+ *
  * ```typescript
  * import { EnhancedScheduler } from '@/server/lib/scheduler';
- * 
+ *
  * const scheduler = new EnhancedScheduler({
- *   baseUrl: process.env.SOLVER_SERVICE_URL!,
- *   timeoutMs: 5000,
+ *   populationSize: 80,
+ *   generations: 300,
+ *   timeoutSeconds: 10,
  * });
- * 
+ *
  * const result = await scheduler.schedule({
  *   timeHorizon: 7, // Schedule for 7 days
  *   tasks: [
@@ -45,14 +46,14 @@
  *     0.8, 0.7, 0.6, 0.5, 0.4, 0.4, 0.3, 0.3, // 16:00 - 23:00
  *   ],
  * });
- * 
+ *
  * console.log(result.status); // 'optimal', 'feasible', 'impossible', or 'error'
  * console.log(result.tasks);  // Scheduled tasks with start/end times
  * console.log(result.successRate); // Fraction of tasks scheduled (0-1)
  * ```
- * 
+ *
  * ## Using with Prisma Database
- * 
+ *
  * ```typescript
  * import {
  *   EnhancedScheduler,
@@ -61,14 +62,14 @@
  *   preferencesToWorkingHours,
  *   preferencesToEnergyProfile,
  * } from '@/server/lib/scheduler';
- * 
+ *
  * // Fetch from database
  * const tasks = await db.task.findMany({ where: { userId, status: 'TODO' } });
  * const events = await db.event.findMany({ where: { userId } });
  * const preferences = await db.workingPreferences.findUnique({ where: { userId } });
- * 
+ *
  * // Convert to scheduler format
- * const scheduler = new EnhancedScheduler({ baseUrl: process.env.SOLVER_SERVICE_URL! });
+ * const scheduler = new EnhancedScheduler({ populationSize: 80, generations: 300 });
  * const result = await scheduler.schedule({
  *   timeHorizon: 7,
  *   tasks: tasks.map(taskToSchedulerTask),
@@ -110,21 +111,11 @@ export type {
   WorkloadBalanceAnalysis,
 } from "./types";
 
-// All other types (for advanced usage)
+// Internal types (for advanced usage)
 export type {
   ValidatedTask,
   ValidatedScheduleRequest,
   TaskScoreComponents,
-  SolverRequestPayload,
-  SolverResponsePayload,
-  SolverVariable,
-  SolverBoolVariable,
-  SolverInterval,
-  SolverConstraint,
-  SolverObjective,
-  SolverObjectiveTerm,
-  ConstraintBuildResult,
-  TaskConstraintMetadata,
 } from "./types";
 
 // ============================================================================
@@ -143,11 +134,3 @@ export {
   preferencesToWorkingHours,
   preferencesToEnergyProfile,
 } from "./prisma-adapters";
-
-// ============================================================================
-// LOW-LEVEL ACCESS (Advanced)
-// ============================================================================
-
-// For direct solver access without EnhancedScheduler wrapper
-export { SolverClient } from "./solver-client";
-export type { SolverClientOptions } from "./solver-client";

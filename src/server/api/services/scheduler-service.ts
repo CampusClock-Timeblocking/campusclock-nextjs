@@ -17,7 +17,7 @@ import {
 import { EventService } from "./event-service";
 import { PreferencesService } from "./preferences-service";
 import { CalendarService } from "./calendar-service";
-import { env } from "@/env";
+
 export class SchedulerService {
   private scheduler: EnhancedScheduler;
   private eventService: EventService;
@@ -25,10 +25,11 @@ export class SchedulerService {
   private calendarService: CalendarService;
 
   constructor(private db: PrismaClient) {
-    // Initialize the scheduler with environment variables
+    // EA runs in-process — no external solver URL needed
     this.scheduler = new EnhancedScheduler({
-      baseUrl: env.SOLVER_SERVICE_URL,
-      timeoutMs: parseInt(process.env.SOLVER_TIMEOUT_MS ?? "10000", 10),
+      populationSize: 80,
+      generations: 300,
+      timeoutSeconds: 10,
       successThreshold: 0.8,
       maxHorizonExtensions: 7,
     });
