@@ -142,6 +142,7 @@ export const rawCreateTaskSchema = z.object({
   scheduledTime: z.iso.time().optional(),
   projectId: z.uuid().optional().nullable(),
   habitId: z.uuid().optional(),
+  preferredStartAfter: z.number().int().min(0).max(1439).optional().nullable(),
 });
 
 export const rawUpdateTaskSchema = rawCreateTaskSchema.partial();
@@ -338,6 +339,15 @@ export const aiTaskInferenceResultSchema = z.object({
   priority: z.number().int().min(1).max(5),
   complexity: z.number().int().min(1).max(10),
 });
+
+export const scheduleEditIntentSchema = z.object({
+  taskId: z.string(), // uuid of the affected task, or empty string if unclear
+  field: z.enum(["deadline", "priority", "durationMinutes", "location", "preferredStartAfter"]),
+  operation: z.enum(["set", "shift_earlier", "shift_later", "increase", "decrease"]),
+  value: z.union([z.string(), z.number()]).optional(),
+  explanation: z.string(), // German sentence shown to user, or a clarifying question
+});
+export type ScheduleEditIntent = z.infer<typeof scheduleEditIntentSchema>;
 
 /* Type Exports */
 export type CreateEventInput = z.infer<typeof CreateEventSchema>;

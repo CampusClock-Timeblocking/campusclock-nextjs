@@ -42,6 +42,16 @@ export interface EATask {
   complexity: number; // 0.0–1.0
   location: string;
   dependsOn: string[]; // always [] in current DB schema
+  preferredStartAfter?: number; // minutes since midnight; soft constraint (+400 if violated)
+}
+
+/** Per-task debug info collected from a final schedule — used by explain-service. */
+export interface TaskDebugInfo {
+  energyAtSlot: number;              // 0–1, EA energy profile value at scheduled hour
+  deadlineDistanceMinutes: number;   // positive = minutes remaining before deadline
+  isInLocationCluster: boolean;
+  penaltiesApplied: string[];
+  bonusesApplied: string[];
 }
 
 /** taskId → startMinute offset from baseDate */
@@ -421,6 +431,12 @@ export function calculateFitness(
     if (task.complexity >= 0.7 && energy < 0.5) p += 200;
     if (task.complexity >= 0.7 && energy >= 0.8) b += 150;
 
+    // Preferred start time soft penalty
+    if (task.preferredStartAfter !== undefined) {
+      const localStart = start % MINUTES_PER_DAY;
+      if (localStart < task.preferredStartAfter) p += 400;
+    }
+
     // Earliness bonus
     b += task.priority * (10000 - start) / 100;
 
@@ -758,6 +774,64 @@ export function evolve(
  *
  * This replaces the CP-SAT solver's "optional interval" / presence variable.
  */
+/**
+ * Compute per-task debug info for a final schedule.
+ * Called once after evolution to generate data for the explain-service.
+ * Does NOT modify the fitness hot path.
+ */
+export function computeTaskDebugInfo(
+  schedule: EASchedule,
+  tasks: EATask[],
+  energyLevels: number[],
+  deadlineMinutes: Map<string, number>,
+): Record<string, TaskDebugInfo> {
+  // Pre-compute location clusters (same location + day = cluster)
+  const locDay = new Map<string, number>();
+  for (const task of tasks) {
+    if (!(task.id in schedule)) continue;
+    const day = Math.floor((schedule[task.id] ?? 0) / MINUTES_PER_DAY);
+    const key = `${task.location}::${day}`;
+    locDay.set(key, (locDay.get(key) ?? 0) + 1);
+  }
+
+  const result: Record<string, TaskDebugInfo> = {};
+
+  for (const task of tasks) {
+    if (!(task.id in schedule)) continue;
+    const start = schedule[task.id]!;
+    const end = start + task.durationMinutes;
+
+    const energy = getEnergyAt(start, energyLevels);
+    const dl = deadlineMinutes.get(task.id);
+    const deadlineDistanceMinutes = dl !== undefined ? dl - end : Infinity;
+
+    const day = Math.floor(start / MINUTES_PER_DAY);
+    const key = `${task.location}::${day}`;
+    const isInLocationCluster = (locDay.get(key) ?? 0) >= 2;
+
+    const penaltiesApplied: string[] = [];
+    const bonusesApplied: string[] = [];
+
+    if (dl !== undefined && end > dl) penaltiesApplied.push("deadline_violated");
+    if (task.complexity >= 0.7 && energy < 0.5) penaltiesApplied.push("low_energy_for_complex");
+    if (task.preferredStartAfter !== undefined && (start % MINUTES_PER_DAY) < task.preferredStartAfter) {
+      penaltiesApplied.push("before_preferred_start");
+    }
+    if (task.complexity >= 0.7 && energy >= 0.8) bonusesApplied.push("high_energy_match");
+    if (isInLocationCluster) bonusesApplied.push("location_cluster");
+
+    result[task.id] = {
+      energyAtSlot: energy,
+      deadlineDistanceMinutes,
+      isInLocationCluster,
+      penaltiesApplied,
+      bonusesApplied,
+    };
+  }
+
+  return result;
+}
+
 export function filterValidSchedule(
   schedule: EASchedule,
   tasks: EATask[],

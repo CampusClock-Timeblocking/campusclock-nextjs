@@ -101,6 +101,7 @@ export function taskToSchedulerTask(task: Task): ValidatedTask {
     deadline: task.due?.toISOString() ?? undefined,
     complexity: normalizeComplexity(task.complexity),
     location: "Office", // TODO: Add location field to Task model if needed
+    preferredStartAfter: task.preferredStartAfter ?? undefined,
   };
 }
 

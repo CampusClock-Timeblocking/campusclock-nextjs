@@ -40,6 +40,7 @@ export interface TaskInput {
   deadline?: string | null;   // ISO datetime when task must be completed by
   complexity?: number;        // 0.0 - 1.0 (higher = requires more mental energy)
   location?: string;          // Where the task happens (for clustering)
+  preferredStartAfter?: number; // minutes since midnight (e.g. 780 = 13:00); soft constraint
 }
 
 /**
@@ -273,6 +274,7 @@ export interface ScheduleResponse {
   solverStatus: SolverStatus;
   successRate: number;        // Fraction of tasks that were scheduled (0-1)
   softConstraints?: SoftConstraintAnalysis;
+  explanations?: Record<string, string>; // taskId → German explanation (lazy, opt-in)
   meta?: {
     objectiveValue?: number | null;
     wallTimeMs: number;

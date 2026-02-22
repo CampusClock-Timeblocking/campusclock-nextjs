@@ -250,6 +250,7 @@ function toEATask(task: ValidatedTask): EATask {
     complexity: task.complexity,
     location: task.location ?? "Home",
     dependsOn: [], // no dependency field in DB schema
+    preferredStartAfter: task.preferredStartAfter,
   };
 }
 
@@ -281,6 +282,7 @@ const TaskSchema = z.object({
   deadline: z.string().datetime().optional().nullable(),
   complexity: z.number().finite().optional(),
   location: z.string().optional(),
+  preferredStartAfter: z.number().int().min(0).max(1439).optional(),
 });
 
 const BusySlotSchema = z.object({
@@ -336,6 +338,7 @@ export function validateScheduleRequest(
     deadline: task.deadline ?? undefined,
     complexity: clamp(task.complexity ?? 0.5, 0, 1),
     location: task.location ?? "Office",
+    preferredStartAfter: task.preferredStartAfter,
   }));
 
   // Normalize busy slots

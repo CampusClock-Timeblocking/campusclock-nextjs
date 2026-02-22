@@ -138,11 +138,12 @@ model Task {
   title           String
   description     String?    @db.Text
   status          TaskStatus @default(TO_DO)
-  durationMinutes Int?
-  priority        Int?
-  complexity      Int?
-  due             DateTime?
-  scheduledTime   String?
+  durationMinutes     Int?
+  priority            Int?
+  complexity          Int?
+  due                 DateTime?
+  scheduledTime       String?
+  preferredStartAfter Int? // minutes since midnight (e.g. 780 = 13:00), set by AI feedback
 
   // Relationships
   taskCompletions TaskCompletion[] // For task completion tracking
