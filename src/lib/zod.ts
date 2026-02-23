@@ -344,7 +344,7 @@ export const scheduleEditIntentSchema = z.object({
   taskId: z.string(), // uuid of the affected task, or empty string if unclear
   field: z.enum(["deadline", "priority", "durationMinutes", "location", "preferredStartAfter"]),
   operation: z.enum(["set", "shift_earlier", "shift_later", "increase", "decrease"]),
-  value: z.union([z.string(), z.number()]).optional(),
+  value: z.union([z.string(), z.number()]).nullable().optional(),
   explanation: z.string(), // German sentence shown to user, or a clarifying question
 });
 export type ScheduleEditIntent = z.infer<typeof scheduleEditIntentSchema>;

@@ -82,7 +82,7 @@ export async function explainScheduledTasks(
 
   try {
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini-2025-08-07",
       messages: [
         {
           role: "system",
@@ -99,8 +99,7 @@ Du bekommst ein Array von Aufgaben-Kontextobjekten. Gib ein JSON-Objekt zurück 
           content: JSON.stringify(context),
         },
       ],
-      temperature: 0.3,
-      max_tokens: 800,
+      max_completion_tokens: 2048,
       response_format: zodResponseFormat(
         explanationResponseSchema,
         "schedule_explanations",
