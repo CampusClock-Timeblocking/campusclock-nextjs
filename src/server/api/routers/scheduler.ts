@@ -464,13 +464,17 @@ export const schedulerRouter = createTRPCRouter({
           taskId: intent.taskId,
         });
 
-        await ctx.db.task.update({ where: { id: intent.taskId }, data: update });
+        const updatedTask = await ctx.db.task.update({
+          where: { id: intent.taskId },
+          data: update,
+          select: { updatedAt: true },
+        });
 
         await previewService.markTaskMutation({
           sessionId: previewSession.id,
           userId,
           taskId: intent.taskId,
-          taskUpdatedAt: new Date(),
+          taskUpdatedAt: updatedTask.updatedAt,
         });
       }
 

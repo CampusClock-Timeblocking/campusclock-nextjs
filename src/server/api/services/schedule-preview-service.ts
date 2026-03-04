@@ -270,21 +270,15 @@ export class SchedulePreviewService {
         continue;
       }
 
-      const task = await tx.task.findFirst({
+      // Atomic compare-and-swap: only rolls back if updatedAt still matches
+      // the timestamp from our last feedback write. If a concurrent edit
+      // changed updatedAt, the WHERE clause won't match and count === 0.
+      const result = await tx.task.updateMany({
         where: {
           id: change.taskId,
           userId,
+          updatedAt: change.lastSessionUpdatedAt,
         },
-        select: { id: true },
-      });
-
-      if (!task) {
-        skippedTaskIds.push(change.taskId);
-        continue;
-      }
-
-      await tx.task.update({
-        where: { id: change.taskId },
         data: {
           due: change.oldDue,
           priority: change.oldPriority,
@@ -292,7 +286,12 @@ export class SchedulePreviewService {
           preferredStartAfter: change.oldPreferredStartAfter,
         },
       });
-      rolledBackTaskIds.push(change.taskId);
+
+      if (result.count === 1) {
+        rolledBackTaskIds.push(change.taskId);
+      } else {
+        skippedTaskIds.push(change.taskId);
+      }
     }
 
     return { rolledBackTaskIds, skippedTaskIds };

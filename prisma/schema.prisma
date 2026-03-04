@@ -145,6 +145,7 @@ model Task {
   due                 DateTime?
   scheduledTime       String?
   preferredStartAfter Int? // minutes since midnight (e.g. 780 = 13:00), set by AI feedback
+  updatedAt           DateTime @updatedAt
 
   // Relationships
   taskCompletions TaskCompletion[] // For task completion tracking
