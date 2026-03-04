@@ -24,7 +24,7 @@ interface Props {
 }
 
 export function CalendarItem({
-  id,
+  id: _id,
   name,
   backgroundColor,
   providerIcon,

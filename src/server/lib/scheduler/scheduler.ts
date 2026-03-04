@@ -92,6 +92,8 @@ export class EnhancedScheduler {
   async schedule(request: ScheduleRequest): Promise<ScheduleResponse> {
     // Handle empty task list
     if (!request.tasks || request.tasks.length === 0) {
+      const effectiveSeed =
+        request.seed !== undefined ? normalizeSeed(request.seed) : undefined;
       return {
         status: "optimal",
         solverStatus: "OPTIMAL",
@@ -101,6 +103,7 @@ export class EnhancedScheduler {
           objectiveValue: null,
           wallTimeMs: 0,
           attemptCount: 0,
+          seed: effectiveSeed,
         },
       };
     }
@@ -123,7 +126,7 @@ export class EnhancedScheduler {
       const wallStart = Date.now();
 
       // Run the evolutionary algorithm
-      const { schedule: rawSchedule, fitness } = evolve(
+      const { schedule: rawSchedule, fitness, seed } = evolve(
         eaTasks,
         busySlotsMinutes,
         validated.workingHours,
@@ -134,6 +137,7 @@ export class EnhancedScheduler {
           populationSize: this.populationSize,
           generations: this.generations,
           timeoutSeconds: this.timeoutSeconds,
+          seed: validated.seed,
         },
       );
 
@@ -195,6 +199,7 @@ export class EnhancedScheduler {
           objectiveValue: Math.round(fitness),
           wallTimeMs,
           attemptCount: extension + 1,
+          seed,
         },
       };
 
@@ -308,6 +313,7 @@ const ScheduleSchema = z.object({
     .nonempty("energyProfile cannot be empty"),
   baseDate: z.date().optional(),
   currentTime: z.date().optional(),
+  seed: z.number().int().nonnegative().optional(),
 });
 
 /**
@@ -326,6 +332,9 @@ export function validateScheduleRequest(
   const baseDate = parsed.baseDate
     ? startOfDay(parsed.baseDate)
     : startOfDay(currentTime);
+  const seed = normalizeSeed(
+    parsed.seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0),
+  );
 
   // Normalize tasks
   const tasks: ValidatedTask[] = parsed.tasks.map((task) => ({
@@ -370,6 +379,7 @@ export function validateScheduleRequest(
     energyProfile,
     currentTime,
     baseDate,
+    seed,
   };
 }
 
@@ -720,4 +730,9 @@ function safeParseISO(value: string | undefined): Date | null {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function normalizeSeed(seed: number): number {
+  const normalized = Math.floor(seed) >>> 0;
+  return normalized === 0 ? 1 : normalized;
 }

@@ -7,16 +7,35 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { SchedulerService } from "../services/scheduler-service";
+import {
+  SchedulePreviewService,
+  type PreviewEventSnapshot,
+} from "../services/schedule-preview-service";
 import { explainScheduledTasks } from "../services/explain-service";
 import { parseScheduleFeedback } from "../services/chat-schedule-service";
 import { computeTaskDebugInfo } from "@/server/lib/scheduler/ea-core";
 import { getOpenAIClient } from "@/server/lib/openai";
+
+const previewEventSchema = z.object({
+  taskId: z.string().uuid(),
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  title: z.string(),
+  description: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+});
+
+const previewEventsSchema = z.array(previewEventSchema);
+
+function parsePreviewEvents(payload: unknown): PreviewEventSnapshot[] {
+  return previewEventsSchema.parse(payload);
+}
+
 export const schedulerRouter = createTRPCRouter({
   /**
-   * Schedule tasks for the current user
-   * Returns the scheduling result without saving to database
+   * Generate a preview schedule and persist a preview session.
    */
-  scheduleTasks: protectedProcedure
+  schedulePreview: protectedProcedure
     .input(
       z.object({
         timeHorizon: z.number().int().min(1).max(30).optional(),
@@ -26,18 +45,33 @@ export const schedulerRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const schedulerService = new SchedulerService(ctx.db);
+      const previewService = new SchedulePreviewService(ctx.db);
+      const userId = ctx.session.user.id;
+      const timeHorizon = input.timeHorizon ?? 7;
+      const baseDate = input.baseDate ?? new Date();
 
       try {
-        const result = await schedulerService.scheduleTasksForUser(
-          ctx.session.user.id,
+        const scheduleResult = await schedulerService.scheduleTasksForUser(
+          userId,
           {
-            timeHorizon: input.timeHorizon,
+            timeHorizon,
             taskIds: input.taskIds,
-            baseDate: input.baseDate,
+            baseDate,
           },
         );
 
-        return result;
+        const previewSession = await previewService.createPreviewSession({
+          userId,
+          seed: scheduleResult.meta.seed ?? 1,
+          baseDate,
+          timeHorizon,
+          previewEvents: scheduleResult.events,
+        });
+
+        return {
+          previewSessionId: previewSession.id,
+          scheduleResult,
+        };
       } catch (error) {
         if (error instanceof Error) {
           throw new TRPCError({
@@ -300,6 +334,7 @@ export const schedulerRouter = createTRPCRouter({
   applyFeedbackAndPreview: protectedProcedure
     .input(
       z.object({
+        previewSessionId: z.string().uuid(),
         message: z.string().min(1).max(1000),
         currentSchedule: z
           .array(z.object({ id: z.string(), start: z.string(), end: z.string() }))
@@ -309,6 +344,7 @@ export const schedulerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const aiAvailable = !!getOpenAIClient();
+      const previewService = new SchedulePreviewService(ctx.db);
 
       if (!aiAvailable) {
         return {
@@ -317,6 +353,19 @@ export const schedulerRouter = createTRPCRouter({
           newSchedule: null,
           clarificationNeeded: false,
         };
+      }
+
+      let previewSession;
+      try {
+        previewSession = await previewService.getActiveSessionOrThrow(
+          input.previewSessionId,
+          userId,
+        );
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        throw error;
       }
 
       const tasks = await ctx.db.task.findMany({
@@ -409,15 +458,37 @@ export const schedulerRouter = createTRPCRouter({
       // "location" is not yet a DB column on Task — silently skip
 
       if (Object.keys(update).length > 0) {
+        await previewService.snapshotTaskBeforeMutation({
+          sessionId: previewSession.id,
+          userId,
+          taskId: intent.taskId,
+        });
+
         await ctx.db.task.update({ where: { id: intent.taskId }, data: update });
+
+        await previewService.markTaskMutation({
+          sessionId: previewSession.id,
+          userId,
+          taskId: intent.taskId,
+          taskUpdatedAt: new Date(),
+        });
       }
 
       // Re-run EA preview
       const schedulerService = new SchedulerService(ctx.db);
       try {
         const newSchedule = await schedulerService.scheduleTasksForUser(userId, {
-          timeHorizon: 7,
+          timeHorizon: previewSession.timeHorizon,
+          baseDate: previewSession.baseDate,
+          seed: previewSession.seed,
         });
+
+        await previewService.replacePreviewEvents({
+          sessionId: previewSession.id,
+          userId,
+          previewEvents: newSchedule.events,
+        });
+
         return { intent, aiReply: intent.explanation, newSchedule, clarificationNeeded: false };
       } catch {
         return { intent, aiReply: intent.explanation, newSchedule: null, clarificationNeeded: false };
@@ -425,22 +496,41 @@ export const schedulerRouter = createTRPCRouter({
     }),
 
   /**
+   * Cancel a preview session and roll back feedback-applied task mutations.
+   */
+  cancelPreview: protectedProcedure
+    .input(
+      z.object({
+        previewSessionId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const previewService = new SchedulePreviewService(ctx.db);
+      const rollback = await previewService.cancelSession(
+        input.previewSessionId,
+        ctx.session.user.id,
+      );
+
+      return rollback;
+    }),
+
+  /**
    * Commit the feedback-adjusted schedule to the calendar.
-   * Re-runs the EA with updated task properties and saves events.
+   * Saves exactly the previewed events without re-running the EA.
    */
   confirmAndSave: protectedProcedure
     .input(
       z.object({
+        previewSessionId: z.string().uuid(),
         calendarId: z.string().uuid(),
-        timeHorizon: z.number().int().min(1).max(30).optional(),
-        taskIds: z.array(z.string().uuid()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const schedulerService = new SchedulerService(ctx.db);
+      const previewService = new SchedulePreviewService(ctx.db);
+      const userId = ctx.session.user.id;
 
       const calendar = await ctx.db.calendar.findFirst({
-        where: { id: input.calendarId, userId: ctx.session.user.id },
+        where: { id: input.calendarId, userId },
       });
 
       if (!calendar) {
@@ -451,12 +541,64 @@ export const schedulerRouter = createTRPCRouter({
       }
 
       try {
-        return await schedulerService.scheduleAndSaveEvents(
-          ctx.session.user.id,
-          input.calendarId,
-          { timeHorizon: input.timeHorizon, taskIds: input.taskIds },
+        const previewSession = await previewService.getActiveSessionOrThrow(
+          input.previewSessionId,
+          userId,
         );
+        const previewEvents = parsePreviewEvents(previewSession.previewEventsJson);
+
+        await ctx.db.$transaction(async (tx) => {
+          if (previewEvents.length > 0) {
+            await tx.event.createMany({
+              data: previewEvents.map((event) => ({
+                title: event.title,
+                description: event.description ?? null,
+                start: new Date(event.start),
+                end: new Date(event.end),
+                allDay: false,
+                color: event.color ?? "#3b82f6",
+                location: null,
+                calendarId: input.calendarId,
+                taskId: event.taskId,
+              })),
+            });
+          }
+
+          await tx.schedulePreviewSession.update({
+            where: { id: previewSession.id },
+            data: {
+              status: "CONFIRMED",
+              confirmedAt: new Date(),
+            },
+          });
+        });
+
+        const scheduledTaskIds = Array.from(
+          new Set(previewEvents.map((event) => event.taskId)),
+        );
+
+        return {
+          scheduledTaskIds,
+          unscheduledTaskIds: [] as string[],
+          events: previewEvents.map((event) => ({
+            taskId: event.taskId,
+            start: new Date(event.start),
+            end: new Date(event.end),
+            title: event.title,
+            description: event.description ?? undefined,
+            color: event.color ?? "#3b82f6",
+          })),
+          meta: {
+            status: scheduledTaskIds.length > 0 ? "feasible" : "impossible",
+            successRate: scheduledTaskIds.length > 0 ? 1 : 0,
+            objectiveValue: null,
+            wallTimeMs: 0,
+          },
+        };
       } catch (error) {
+        if (error instanceof Error && error.message.includes("Preview session")) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
         if (error instanceof Error) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
         }
@@ -464,4 +606,3 @@ export const schedulerRouter = createTRPCRouter({
       }
     }),
 });
-

@@ -61,6 +61,7 @@ export interface EvolveResult {
   schedule: EASchedule;
   fitness: number;
   curve: number[];
+  seed: number;
 }
 
 export interface EvolveOptions {
@@ -68,6 +69,7 @@ export interface EvolveOptions {
   populationSize?: number; // default 80
   generations?: number; // default 300
   timeoutSeconds?: number; // default 10.0
+  seed?: number; // optional deterministic seed
 }
 
 // ============================================================================
@@ -121,25 +123,45 @@ function bisectRight(
 }
 
 /** Pick a uniformly random element from arr. */
-function randomChoice<T>(arr: T[]): T {
+function randomChoice<T>(arr: T[], rng: () => number): T {
   if (arr.length === 0) throw new Error("randomChoice: empty array");
-  return arr[Math.floor(Math.random() * arr.length)] as T;
+  return arr[Math.floor(rng() * arr.length)] as T;
 }
 
 /**
  * Return k unique random indices in [0, n).
  * Partial Fisher-Yates equivalent to Python random.sample(range(n), k).
  */
-function randomSample(n: number, k: number): number[] {
+function randomSample(n: number, k: number, rng: () => number): number[] {
   const indices = Array.from({ length: n }, (_, i) => i);
   const actual = Math.min(k, n);
   for (let i = 0; i < actual; i++) {
-    const j = i + Math.floor(Math.random() * (n - i));
+    const j = i + Math.floor(rng() * (n - i));
     const tmp = indices[i]!;
     indices[i] = indices[j]!;
     indices[j] = tmp;
   }
   return indices.slice(0, actual);
+}
+
+function normalizeSeed(input: number): number {
+  const normalized = Math.floor(input) >>> 0;
+  return normalized === 0 ? 1 : normalized;
+}
+
+/**
+ * Tiny deterministic PRNG for reproducible EA runs.
+ * Returns values in [0, 1).
+ */
+function createMulberry32(seed: number): () => number {
+  let state = normalizeSeed(seed);
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 // ============================================================================
@@ -480,6 +502,7 @@ function createIndividual(
   taskMap: Map<string, EATask>,
   baseSlots: Map<string, number[]>,
   whParsed: Array<[number, number]>,
+  rng: () => number,
 ): EASchedule {
   const schedule: EASchedule = {};
 
@@ -522,7 +545,7 @@ function createIndividual(
     let chosen: number;
     if (eligible.length > 0) {
       const top = eligible.slice(0, GREEDY_CANDIDATES);
-      const [day, chosenStart] = randomChoice(top);
+      const [day, chosenStart] = randomChoice(top, rng);
       dayNextStart[day] = chosenStart + task.durationMinutes;
       chosen = chosenStart;
     } else {
@@ -553,12 +576,13 @@ function mutate(
   taskMap: Map<string, EATask>,
   reverseDeps: Map<string, string[]>,
   baseSlots: Map<string, number[]>,
+  rng: () => number,
 ): EASchedule {
   const ind = { ...individual };
   const horizon = timeHorizon * MINUTES_PER_DAY;
 
   for (const task of tasks) {
-    if (Math.random() > mutationRate) continue;
+    if (rng() > mutationRate) continue;
 
     // Earliest start (dependencies push forward)
     let earliest = 0;
@@ -582,7 +606,7 @@ function mutate(
     // Random delta: ±{15,30,...,180} minutes
     const deltas: number[] = [];
     for (let d = -180; d <= 180; d += GRANULARITY) deltas.push(d);
-    const delta = randomChoice(deltas);
+    const delta = randomChoice(deltas, rng);
     let candidate = Math.max(
       earliest,
       Math.min(latest, (ind[task.id] ?? earliest) + delta),
@@ -617,12 +641,16 @@ function mutate(
 /**
  * Uniform crossover: each task randomly taken from parent1 or parent2.
  */
-function crossover(p1: EASchedule, p2: EASchedule): EASchedule {
+function crossover(
+  p1: EASchedule,
+  p2: EASchedule,
+  rng: () => number,
+): EASchedule {
   const result: EASchedule = {};
   const keys = new Set([...Object.keys(p1), ...Object.keys(p2)]);
   for (const k of keys) {
     result[k] =
-      Math.random() < 0.5 ? (p1[k] ?? p2[k] ?? 0) : (p2[k] ?? p1[k] ?? 0);
+      rng() < 0.5 ? (p1[k] ?? p2[k] ?? 0) : (p2[k] ?? p1[k] ?? 0);
   }
   return result;
 }
@@ -634,9 +662,10 @@ function crossover(p1: EASchedule, p2: EASchedule): EASchedule {
 function tournament(
   population: EASchedule[],
   fitnesses: number[],
+  rng: () => number,
   k = 3,
 ): EASchedule {
-  const indices = randomSample(population.length, Math.min(k, population.length));
+  const indices = randomSample(population.length, Math.min(k, population.length), rng);
   let bestIdx = indices[0]!;
   for (const idx of indices) {
     if ((fitnesses[idx] ?? Infinity) < (fitnesses[bestIdx] ?? Infinity)) {
@@ -673,6 +702,10 @@ export function evolve(
   const populationSize = options?.populationSize ?? 80;
   const generations = options?.generations ?? 300;
   const timeoutSeconds = options?.timeoutSeconds ?? 10.0;
+  const seed = normalizeSeed(
+    options?.seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0),
+  );
+  const rng = createMulberry32(seed);
 
   const t0 = Date.now();
   const horizon = timeHorizon * MINUTES_PER_DAY;
@@ -713,11 +746,11 @@ export function evolve(
 
   // ── Initial population ─────────────────────────────────────────────────────
   let pop: EASchedule[] = Array.from({ length: populationSize }, () =>
-    createIndividual(tasks, sortedIds, timeHorizon, taskMap, baseSlots, whParsed),
+    createIndividual(tasks, sortedIds, timeHorizon, taskMap, baseSlots, whParsed, rng),
   );
   let fits = pop.map(score);
 
-  let bestIdx = fits.reduce((bi, f, i) => (f < (fits[bi] ?? Infinity) ? i : bi), 0);
+  const bestIdx = fits.reduce((bi, f, i) => (f < (fits[bi] ?? Infinity) ? i : bi), 0);
   let bestInd = { ...pop[bestIdx]! };
   let bestFit = fits[bestIdx] ?? 0;
   const curve: number[] = [bestFit];
@@ -737,8 +770,21 @@ export function evolve(
       .map((i) => ({ ...pop[i]! }));
 
     while (newPop.length < populationSize) {
-      let child = crossover(tournament(pop, fits), tournament(pop, fits));
-      child = mutate(child, tasks, timeHorizon, 0.2, taskMap, reverseDeps, baseSlots);
+      let child = crossover(
+        tournament(pop, fits, rng),
+        tournament(pop, fits, rng),
+        rng,
+      );
+      child = mutate(
+        child,
+        tasks,
+        timeHorizon,
+        0.2,
+        taskMap,
+        reverseDeps,
+        baseSlots,
+        rng,
+      );
       newPop.push(child);
     }
 
@@ -756,7 +802,7 @@ export function evolve(
     curve.push(bestFit);
   }
 
-  return { schedule: bestInd, fitness: bestFit, curve };
+  return { schedule: bestInd, fitness: bestFit, curve, seed };
 }
 
 // ============================================================================

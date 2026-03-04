@@ -48,6 +48,7 @@ export class SchedulerService {
       timeHorizon?: number;
       taskIds?: string[]; // If provided, only schedule these tasks
       baseDate?: Date;
+      seed?: number;
     }
   ): Promise<SchedulingResult> {
     console.log("\n🔵 [Scheduler] Starting scheduling for user:", userId);
@@ -55,6 +56,7 @@ export class SchedulerService {
       timeHorizon: options?.timeHorizon,
       taskIds: options?.taskIds,
       baseDate: options?.baseDate,
+      seed: options?.seed,
     });
 
     // Use configured horizon or default to 7 days
@@ -85,7 +87,8 @@ export class SchedulerService {
     const scheduleRequest = this.buildScheduleRequest(
       context,
       finalTimeHorizon,
-      options?.baseDate
+      options?.baseDate,
+      options?.seed,
     );
 
     console.log("📤 Sending to solver:", {
@@ -131,6 +134,7 @@ export class SchedulerService {
       timeHorizon?: number;
       taskIds?: string[];
       baseDate?: Date;
+      seed?: number;
     }
   ): Promise<SchedulingResult> {
     const result = await this.scheduleTasksForUser(userId, options);
@@ -172,6 +176,7 @@ export class SchedulerService {
     options?: {
       timeHorizon?: number;
       baseDate?: Date;
+      seed?: number;
     }
   ): Promise<SchedulingResult> {
     // Get all task-linked events for this user
@@ -311,7 +316,8 @@ export class SchedulerService {
   private buildScheduleRequest(
     context: SchedulingContext,
     timeHorizon: number,
-    baseDate?: Date
+    baseDate?: Date,
+    seed?: number,
   ): ScheduleRequest {
     const currentTime = context.currentTime ?? new Date();
     const scheduleBaseDate = baseDate ?? context.baseDate ?? new Date();
@@ -345,6 +351,7 @@ export class SchedulerService {
       ),
       baseDate: scheduleBaseDate,
       currentTime,
+      seed,
     };
   }
 
@@ -406,6 +413,7 @@ export class SchedulerService {
         successRate: response.successRate,
         objectiveValue: response.meta?.objectiveValue,
         wallTimeMs: response.meta?.wallTimeMs ?? 0,
+        seed: response.meta?.seed,
       },
     };
   }
@@ -422,4 +430,3 @@ function getTaskColor(task: { priority: number | null } | undefined): string {
   if (priority >= 4) return "#3b82f6"; // blue-500 (medium)
   return "#6b7280"; // gray-500 (low priority)
 }
-

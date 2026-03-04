@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -62,6 +63,7 @@ type FeedbackMessage = {
 export function ScheduleButton() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewResult, setPreviewResult] = useState<SchedulingResult | null>(null);
+  const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
 
   // Feedback loop state
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessage[]>([]);
@@ -74,12 +76,17 @@ export function ScheduleButton() {
   const utils = api.useUtils();
 
   // Reset feedback state when dialog closes
-  const handleDialogChange = (open: boolean) => {
+  const handleDialogChange = (open: boolean, opts?: { skipCancel?: boolean }) => {
     setShowPreview(open);
     if (!open) {
+      if (previewSessionId && !opts?.skipCancel) {
+        cancelPreviewMutation.mutate({ previewSessionId });
+      }
+      setPreviewSessionId(null);
       setFeedbackHistory([]);
       setFeedbackInput("");
       setExplanations({});
+      setPreviewResult(null);
     }
   };
 
@@ -90,7 +97,7 @@ export function ScheduleButton() {
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: stats } = api.scheduler.getSchedulingStats.useQuery();
-  const { data: health } = api.scheduler.checkSolverHealth.useQuery();
+  const { data: health, isLoading: healthLoading } = api.scheduler.checkSolverHealth.useQuery();
   const { data: calendars } = api.calendar.getAll.useQuery();
 
   // Explanation query (lazy — enabled only when dialog is open and we have scheduled tasks)
@@ -123,9 +130,10 @@ export function ScheduleButton() {
   }, [explainFetching]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
-  const previewMutation = api.scheduler.scheduleTasks.useMutation({
+  const previewMutation = api.scheduler.schedulePreview.useMutation({
     onSuccess: (result) => {
-      setPreviewResult(result);
+      setPreviewSessionId(result.previewSessionId);
+      setPreviewResult(result.scheduleResult);
       setFeedbackHistory([]);
       setExplanations({});
       setShowPreview(true);
@@ -138,7 +146,7 @@ export function ScheduleButton() {
     },
   });
 
-  const scheduleMutation = api.scheduler.scheduleAndSave.useMutation({
+  const quickScheduleMutation = api.scheduler.scheduleAndSave.useMutation({
     onSuccess: (result) => {
       if (result.meta.status === "optimal" || result.meta.status === "feasible") {
         toast.success("Aufgaben erfolgreich eingeplant!", {
@@ -167,6 +175,34 @@ export function ScheduleButton() {
     },
   });
 
+  const confirmMutation = api.scheduler.confirmAndSave.useMutation({
+    onSuccess: (result) => {
+      if (result.meta.status === "optimal" || result.meta.status === "feasible") {
+        toast.success("Aufgaben erfolgreich eingeplant!", {
+          description: `${result.scheduledTaskIds.length} Aufgabe${result.scheduledTaskIds.length !== 1 ? "n" : ""} gespeichert`,
+          position: "bottom-left",
+        });
+        void utils.calendar.getAllCalendarsWithUnifiedEvents.invalidate();
+        void utils.calendar.getAllUnifiedEvents.invalidate();
+        void utils.scheduler.getSchedulingStats.invalidate();
+        setPreviewSessionId(null);
+        handleDialogChange(false, { skipCancel: true });
+      } else if (result.meta.status === "impossible") {
+        toast.error("Keine Aufgaben konnten gespeichert werden", {
+          position: "bottom-left",
+        });
+      } else {
+        toast.error("Speichern fehlgeschlagen", { position: "bottom-left" });
+      }
+    },
+    onError: (error) => {
+      toast.error("Fehler beim Speichern", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
   const feedbackMutation = api.scheduler.applyFeedbackAndPreview.useMutation({
     onSuccess: (result) => {
       setFeedbackHistory((prev) => [
@@ -187,6 +223,13 @@ export function ScheduleButton() {
     },
   });
 
+  const cancelPreviewMutation = api.scheduler.cancelPreview.useMutation({
+    onError: () => {
+      // Best-effort rollback on close; surface only in logs.
+      console.warn("[schedule] Failed to cancel preview session");
+    },
+  });
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   const writableCalendar =
     calendars?.find(
@@ -202,7 +245,7 @@ export function ScheduleButton() {
       toast.error("Kein beschreibbarer Kalender gefunden");
       return;
     }
-    scheduleMutation.mutate({ calendarId: writableCalendar.id, timeHorizon: 7 });
+    quickScheduleMutation.mutate({ calendarId: writableCalendar.id, timeHorizon: 7 });
   };
 
   const handleConfirmSchedule = () => {
@@ -210,17 +253,29 @@ export function ScheduleButton() {
       toast.error("Kein beschreibbarer Kalender gefunden");
       return;
     }
-    scheduleMutation.mutate({ calendarId: writableCalendar.id, timeHorizon: 7 });
+    if (!previewSessionId) {
+      toast.error("Vorschau-Sitzung nicht gefunden. Bitte erneut Vorschau berechnen.");
+      return;
+    }
+    confirmMutation.mutate({
+      calendarId: writableCalendar.id,
+      previewSessionId,
+    });
   };
 
   const handleSendFeedback = () => {
     const msg = feedbackInput.trim();
     if (!msg || feedbackMutation.isPending) return;
+    if (!previewSessionId) {
+      toast.error("Vorschau-Sitzung fehlt. Bitte Vorschau neu laden.");
+      return;
+    }
 
     setFeedbackHistory((prev) => [...prev, { role: "user", text: msg }]);
     setFeedbackInput("");
 
     feedbackMutation.mutate({
+      previewSessionId,
       message: msg,
       currentSchedule: previewResult?.events.map((e) => ({
         id: e.taskId,
@@ -253,12 +308,27 @@ export function ScheduleButton() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (!health?.available) {
+  if (healthLoading) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-28" />
+        </div>
+      </div>
+    );
+  }
+
+  if (health?.available === false) {
     return (
       <Alert variant="destructive" className="max-w-md">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Planer offline: {health?.error ?? "Unbekannter Fehler"}
+          Planer offline: {health.error ?? "Unbekannter Fehler"}
         </AlertDescription>
       </Alert>
     );
@@ -301,10 +371,10 @@ export function ScheduleButton() {
           </Button>
           <Button
             onClick={handleScheduleAndSave}
-            disabled={!hasTasksToSchedule || scheduleMutation.isPending}
+            disabled={!hasTasksToSchedule || quickScheduleMutation.isPending}
             size="sm"
           >
-            {scheduleMutation.isPending ? (
+            {quickScheduleMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Speichern...
@@ -446,7 +516,7 @@ export function ScheduleButton() {
               {/* Feedback input */}
               <div className="space-y-2">
                 <p className="text-muted-foreground text-xs">
-                  Passt das so? Gib Feedback auf Deutsch (z.B. "Physik lieber nachmittags"):
+                  Passt das so? Gib Feedback auf Deutsch (z.B. &quot;Physik lieber nachmittags&quot;):
                 </p>
                 <div className="flex gap-2">
                   <Textarea
@@ -486,18 +556,19 @@ export function ScheduleButton() {
                 <Button
                   variant="outline"
                   onClick={() => handleDialogChange(false)}
-                  disabled={scheduleMutation.isPending}
+                  disabled={confirmMutation.isPending}
                 >
                   Abbrechen
                 </Button>
                 <Button
                   onClick={handleConfirmSchedule}
                   disabled={
-                    scheduleMutation.isPending ||
-                    previewResult.scheduledTaskIds.length === 0
+                    confirmMutation.isPending ||
+                    previewResult.scheduledTaskIds.length === 0 ||
+                    !previewSessionId
                   }
                 >
-                  {scheduleMutation.isPending ? (
+                  {confirmMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Speichern...

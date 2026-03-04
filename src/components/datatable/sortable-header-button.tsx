@@ -3,9 +3,7 @@ import { Button } from "../ui/button";
 import {
   ArrowDown,
   ArrowUp,
-  ChevronDown,
   ChevronsUpDown,
-  ChevronUp,
 } from "lucide-react";
 
 interface SortableHeaderProps<TData, TValue> {

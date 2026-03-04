@@ -1,9 +1,8 @@
-import { env } from "@/env";
 import { google } from "@/server/lib/arctic";
 import { auth } from "@/server/lib/auth";
 import { generateState, generateCodeVerifier } from "arctic";
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {

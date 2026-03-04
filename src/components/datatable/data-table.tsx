@@ -16,6 +16,7 @@ import {
 import type { ReactNode } from "react";
 import { Skeleton } from "../ui/skeleton";
 declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     skeleton?: (index: number) => ReactNode;
   }

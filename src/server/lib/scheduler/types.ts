@@ -84,6 +84,7 @@ export interface ScheduleRequest {
   energyProfile: number[];    // 24 entries (hour 0-23), values 0-1
   baseDate?: Date;            // Start date for scheduling (defaults to today)
   currentTime?: Date;         // Current time for urgency calculations
+  seed?: number;              // Optional deterministic seed for EA reproducibility
 }
 
 /**
@@ -96,6 +97,7 @@ export interface ValidatedScheduleRequest extends ScheduleRequest {
   energyProfile: number[];
   baseDate: Date;
   currentTime: Date;
+  seed: number;
 }
 
 // ============================================================================
@@ -279,6 +281,7 @@ export interface ScheduleResponse {
     objectiveValue?: number | null;
     wallTimeMs: number;
     attemptCount?: number;    // How many horizon extensions were tried
+    seed?: number;            // Effective EA seed for reproducibility/debugging
   };
 }
 

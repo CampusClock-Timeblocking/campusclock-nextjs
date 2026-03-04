@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { RiDeleteBinLine, RiGoogleLine } from "@remixicon/react";
 import { AsyncButton } from "@/components/basic-components/async-action-button";

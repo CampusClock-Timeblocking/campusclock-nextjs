@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { AddICloudAccountDialog } from "./add-icloud-account-dialog";
 
 export function AddCalendarAccountDialog() {
-  const { hideDialog, showDialog } = useDialog();
+  const { showDialog } = useDialog();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleGoogleConnect = () => {

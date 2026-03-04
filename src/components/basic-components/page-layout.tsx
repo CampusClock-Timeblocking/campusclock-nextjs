@@ -50,13 +50,14 @@ export function TitlePage({
       },
     );
 
-    if (titleRef.current) {
-      observer.observe(titleRef.current);
+    const node = titleRef.current;
+    if (node) {
+      observer.observe(node);
     }
 
     return () => {
-      if (titleRef.current) {
-        observer.unobserve(titleRef.current);
+      if (node) {
+        observer.unobserve(node);
       }
     };
   }, []);

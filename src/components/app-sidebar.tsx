@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { RiCalendarView, RiCheckLine, RiTodoLine } from "@remixicon/react";
+import { RiCalendarView, RiTodoLine } from "@remixicon/react";
 import { useCalendarContext } from "@/components/event-calendar/calendar-context";
 import type { CalendarWithEventsAndAccount } from "@/server/api/services/calendar-service";
 import { getPoviderIcon } from "@/components/settings/calendar/calendar-account";

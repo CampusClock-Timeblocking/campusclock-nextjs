@@ -2,7 +2,7 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type Habit, PeriodUnit } from "@prisma/client";
+import { type Habit } from "@prisma/client";
 import { format } from "date-fns";
 import { SortableHeader } from "../sortable-header-button";
 import { AlertOctagon, Power, Repeat, Timer } from "lucide-react";

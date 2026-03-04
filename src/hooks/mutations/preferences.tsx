@@ -1,6 +1,5 @@
 "use client";
 
-import type { WorkingHours, Preferences } from "@/lib/zod";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 

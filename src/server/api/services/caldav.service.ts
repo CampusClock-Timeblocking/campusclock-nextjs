@@ -55,7 +55,7 @@ export class CalDAVService {
   async connect(): Promise<void> {
     try {
       await this.client.login();
-    } catch (error) {
+    } catch {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "CalDAV authentication failed. Please check your credentials.",
@@ -66,7 +66,7 @@ export class CalDAVService {
   async fetchCalendars(): Promise<DAVCalendar[]> {
     try {
       return await this.client.fetchCalendars();
-    } catch (error) {
+    } catch {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Error fetching calendars.",
@@ -206,7 +206,7 @@ export class CalDAVService {
       });
 
       return this.parseCalendarObjects(objects);
-    } catch (error) {
+    } catch {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Error fetching events.",

@@ -74,6 +74,7 @@ export interface SchedulingResult {
     successRate: number;
     objectiveValue?: number | null;
     wallTimeMs: number;
+    seed?: number;
   };
 }
 

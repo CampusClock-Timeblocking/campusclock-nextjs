@@ -6,7 +6,7 @@ import { db } from "@/server/db";
 import { google } from "@/server/lib/arctic";
 import { OAuth2RequestError, ArcticFetchError, decodeIdToken } from "arctic";
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 interface GoogleIdTokenClaims {
   iss: string;

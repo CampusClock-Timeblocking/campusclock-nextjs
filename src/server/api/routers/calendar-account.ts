@@ -195,7 +195,7 @@ export const calendarAccountRouter = createTRPCRouter({
 
       try {
         await caldavService.connect();
-      } catch (error) {
+      } catch {
         throw new TRPCError({
           message:
             "Failed to connect to iCloud. Please check your credentials.",
