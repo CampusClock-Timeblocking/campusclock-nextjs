@@ -15,6 +15,7 @@ import { explainScheduledTasks } from "../services/explain-service";
 import { parseScheduleFeedback } from "../services/chat-schedule-service";
 import { computeTaskDebugInfo } from "@/server/lib/scheduler/ea-core";
 import { getOpenAIClient } from "@/server/lib/openai";
+import { EventService } from "../services/event-service";
 
 const previewEventSchema = z.object({
   taskId: z.string().uuid(),
@@ -516,6 +517,16 @@ export const schedulerRouter = createTRPCRouter({
             },
           });
         });
+
+        // Invalidate event/calendar caches for all weeks covered by new events
+        if (previewEvents.length > 0) {
+          const eventService = new EventService(ctx.db);
+          const dates = previewEvents.map((e) => new Date(e.start));
+          const endDates = previewEvents.map((e) => new Date(e.end));
+          const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+          const maxDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
+          await eventService.invalidateEventWeeks(userId, minDate, maxDate);
+        }
 
         const scheduledTaskIds = Array.from(
           new Set(previewEvents.map((event) => event.taskId)),

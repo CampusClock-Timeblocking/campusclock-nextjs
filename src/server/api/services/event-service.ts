@@ -64,7 +64,7 @@ export class EventService {
    * Invalidate cache for all weeks that overlap with the given date range
    * Invalidates both event-specific cache and calendar-with-events cache
    */
-  private async invalidateEventWeeks(
+  async invalidateEventWeeks(
     userId: string,
     start: Date,
     end: Date,

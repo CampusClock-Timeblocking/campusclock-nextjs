@@ -9,11 +9,13 @@ Goal: make preview/feedback/confirm behavior correct, deterministic, atomic, tim
 1. Seeded EA determinism (`seed` plumbing in scheduler types/core/service metadata).
 2. Preview session persistence layer (`SchedulePreviewSession`, `SchedulePreviewTaskChange`, service methods).
 3. Session-based preview flow wiring (`schedulePreview`, `applyFeedbackAndPreview` with session, `cancelPreview`, `confirmAndSave` using stored preview events).
+4. **Rollback conflict guard** (issue #1): `Task.updatedAt` added via `@updatedAt`; rollback uses atomic compare-and-swap (`updateMany` with `where: { updatedAt }`) — no read-then-write race. Tests in `schedule-preview-service.test.ts`.
+5. **Hard cutover** (issue #2): `scheduleAndSave` route removed from router; "Jetzt einplanen" button removed from UI. Single entry point is now `schedulePreview` → preview dialog → `confirmAndSave`.
 
-### Remaining issues found in current code
-1. **Rollback conflict guard is not enforceable yet**: rollback currently writes old task values without verifying task-level version/timestamp equality. This can overwrite legitimate external edits made after preview feedback.
-2. **Single-path cutover is incomplete**: `scheduleAndSave` and UI quick action (`Jetzt einplanen`) still exist, bypassing preview-session guarantees.
-3. **Confirm save path skips cache invalidation service layer**: `confirmAndSave` writes via `createMany` directly and does not invalidate event/calendar caches.
+### Remaining issues
+1. ~~Rollback conflict guard~~ — **Done.**
+2. ~~Single-path cutover~~ — **Done.**
+3. ~~Confirm save path skips cache invalidation~~ — **Done.** `confirmAndSave` now calls `EventService.invalidateEventWeeks` after the transaction.
 4. **Close-confirm race is still possible from dialog controls**: dialog can still close via non-button interactions while confirm is pending, potentially triggering cancel semantics.
 5. **Busy-slot window is still anchored to `now` instead of scheduling `baseDate`**.
 6. **Scheduling stats still rely on `Task.scheduledTime`** instead of event-linked truth.
@@ -86,12 +88,9 @@ Goal: make preview/feedback/confirm behavior correct, deterministic, atomic, tim
 9. Remove old path directly (single overwrite).
 
 ## Remaining Execution Order (from current state)
-1. Add task-level conflict guard support for rollback:
-   introduce `Task.updatedAt` (or equivalent version field) and use strict compare before rollback writes.
-2. Finish hard cutover:
-   remove/deprecate `scheduleAndSave` from UI and scheduler router.
-3. Add cache invalidation for confirm path:
-   either route through `EventService` transactional API or add explicit invalidation after `createMany`.
+1. ~~Add task-level conflict guard~~ — **Done.**
+2. ~~Finish hard cutover~~ — **Done.**
+3. ~~Add cache invalidation for confirm path~~ — **Done.**
 4. Prevent close-confirm race:
    block dialog close while confirm mutation is pending (`onInteractOutside`/`onEscapeKeyDown` guards).
 5. Align scheduling context window to `baseDate`:
