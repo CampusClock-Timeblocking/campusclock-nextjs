@@ -84,66 +84,6 @@ export const schedulerRouter = createTRPCRouter({
     }),
 
   /**
-   * Schedule tasks and save them as events in the user's calendar
-   */
-  scheduleAndSave: protectedProcedure
-    .input(
-      z.object({
-        calendarId: z.string().uuid(),
-        timeHorizon: z.number().int().min(1).max(30).optional(),
-        taskIds: z.array(z.string().uuid()).optional(),
-        baseDate: z.date().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const schedulerService = new SchedulerService(ctx.db);
-
-      // Verify the calendar belongs to the user
-      const calendar = await ctx.db.calendar.findFirst({
-        where: {
-          id: input.calendarId,
-          userId: ctx.session.user.id,
-        },
-      });
-
-      if (!calendar) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Calendar not found",
-        });
-      }
-
-      if (calendar.readOnly) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Cannot schedule to a read-only calendar",
-        });
-      }
-
-      try {
-        const result = await schedulerService.scheduleAndSaveEvents(
-          ctx.session.user.id,
-          input.calendarId,
-          {
-            timeHorizon: input.timeHorizon,
-            taskIds: input.taskIds,
-            baseDate: input.baseDate,
-          },
-        );
-
-        return result;
-      } catch (error) {
-        if (error instanceof Error) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: error.message,
-          });
-        }
-        throw error;
-      }
-    }),
-
-  /**
    * Reschedule all tasks (clear existing scheduled events and create new ones)
    */
   rescheduleAll: protectedProcedure

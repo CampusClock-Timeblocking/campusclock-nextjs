@@ -6,7 +6,6 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Zap,
   Info,
   Send,
 } from "lucide-react";
@@ -146,35 +145,6 @@ export function ScheduleButton() {
     },
   });
 
-  const quickScheduleMutation = api.scheduler.scheduleAndSave.useMutation({
-    onSuccess: (result) => {
-      if (result.meta.status === "optimal" || result.meta.status === "feasible") {
-        toast.success("Aufgaben erfolgreich eingeplant!", {
-          description: `${result.scheduledTaskIds.length} Aufgabe${result.scheduledTaskIds.length !== 1 ? "n" : ""} in ${(result.meta.wallTimeMs / 1000).toFixed(1)}s`,
-          position: "bottom-left",
-        });
-        void utils.calendar.getAllCalendarsWithUnifiedEvents.invalidate();
-        void utils.calendar.getAllUnifiedEvents.invalidate();
-        void utils.scheduler.getSchedulingStats.invalidate();
-        handleDialogChange(false);
-        setPreviewResult(null);
-      } else if (result.meta.status === "impossible") {
-        toast.error("Nicht alle Aufgaben konnten eingeplant werden", {
-          description: `Nur ${result.scheduledTaskIds.length} von ${result.scheduledTaskIds.length + result.unscheduledTaskIds.length} Aufgaben eingeplant`,
-          position: "bottom-left",
-        });
-      } else {
-        toast.error("Einplanung fehlgeschlagen", { position: "bottom-left" });
-      }
-    },
-    onError: (error) => {
-      toast.error("Fehler beim Einplanen", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  });
-
   const confirmMutation = api.scheduler.confirmAndSave.useMutation({
     onSuccess: (result) => {
       if (result.meta.status === "optimal" || result.meta.status === "feasible") {
@@ -238,14 +208,6 @@ export function ScheduleButton() {
 
   const handlePreviewSchedule = () => {
     previewMutation.mutate({ timeHorizon: 7 });
-  };
-
-  const handleScheduleAndSave = () => {
-    if (!writableCalendar) {
-      toast.error("Kein beschreibbarer Kalender gefunden");
-      return;
-    }
-    quickScheduleMutation.mutate({ calendarId: writableCalendar.id, timeHorizon: 7 });
   };
 
   const handleConfirmSchedule = () => {
@@ -354,7 +316,6 @@ export function ScheduleButton() {
           <Button
             onClick={handlePreviewSchedule}
             disabled={!hasTasksToSchedule || previewMutation.isPending}
-            variant="outline"
             size="sm"
           >
             {previewMutation.isPending ? (
@@ -365,24 +326,7 @@ export function ScheduleButton() {
             ) : (
               <>
                 <Calendar className="mr-2 h-4 w-4" />
-                Vorschau
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={handleScheduleAndSave}
-            disabled={!hasTasksToSchedule || quickScheduleMutation.isPending}
-            size="sm"
-          >
-            {quickScheduleMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Speichern...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 h-4 w-4" />
-                Jetzt einplanen
+                Einplanen
               </>
             )}
           </Button>

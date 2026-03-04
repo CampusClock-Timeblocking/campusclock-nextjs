@@ -36,7 +36,7 @@ function createMockDb(): MockDb {
   };
 
   // $transaction executes the callback with `db` as the tx client
-  db.$transaction.mockImplementation(async (fn: (tx: MockDb) => Promise<unknown>) => fn(db));
+  db.$transaction.mockImplementation((fn: (tx: MockDb) => Promise<unknown>) => fn(db));
 
   return db;
 }
