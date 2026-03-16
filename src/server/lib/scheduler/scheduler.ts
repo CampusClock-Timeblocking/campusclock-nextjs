@@ -21,10 +21,12 @@ import {
 } from "date-fns";
 import { z } from "zod";
 import {
+  DEFAULT_FITNESS_WEIGHTS,
   evolve,
   filterValidSchedule,
   parseWorkingHours,
   type EATask,
+  type FitnessWeights,
 } from "./ea-core";
 import type {
   BusySlot,
@@ -126,7 +128,11 @@ export class EnhancedScheduler {
       const wallStart = Date.now();
 
       // Run the evolutionary algorithm
-      const { schedule: rawSchedule, fitness, seed } = evolve(
+      const {
+        schedule: rawSchedule,
+        fitness,
+        seed,
+      } = evolve(
         eaTasks,
         busySlotsMinutes,
         validated.workingHours,
@@ -138,6 +144,7 @@ export class EnhancedScheduler {
           generations: this.generations,
           timeoutSeconds: this.timeoutSeconds,
           seed: validated.seed,
+          fitnessWeights: validated.fitnessWeights,
         },
       );
 
@@ -213,10 +220,7 @@ export class EnhancedScheduler {
 
       bestResponse = response;
 
-      if (
-        successRate >= this.successThreshold ||
-        solverStatus === "OPTIMAL"
-      ) {
+      if (successRate >= this.successThreshold || solverStatus === "OPTIMAL") {
         break;
       }
     }
@@ -301,6 +305,13 @@ const WorkingHoursSchema = z.object({
   endTime: z.string().regex(TIME_PATTERN, "endTime must be HH:MM"),
 });
 
+const FitnessWeightsSchema = z.object({
+  deadlinePenalty: z.number().finite().positive(),
+  energyPenalty: z.number().finite().positive(),
+  earlinessBonus: z.number().finite().positive(),
+  clusterBonus: z.number().finite().positive(),
+});
+
 const ScheduleSchema = z.object({
   timeHorizon: z.number().int().positive(),
   tasks: z.array(TaskSchema).nonempty("At least one task is required"),
@@ -311,6 +322,7 @@ const ScheduleSchema = z.object({
   energyProfile: z
     .array(z.number().finite())
     .nonempty("energyProfile cannot be empty"),
+  fitnessWeights: FitnessWeightsSchema.optional(),
   baseDate: z.date().optional(),
   currentTime: z.date().optional(),
   seed: z.number().int().nonnegative().optional(),
@@ -333,7 +345,7 @@ export function validateScheduleRequest(
     ? startOfDay(parsed.baseDate)
     : startOfDay(currentTime);
   const seed = normalizeSeed(
-    parsed.seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0),
+    parsed.seed ?? (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0,
   );
 
   // Normalize tasks
@@ -371,12 +383,14 @@ export function validateScheduleRequest(
 
   // Normalize energy profile to 24 hours with values 0-1
   const energyProfile = normalizeEnergyProfile(parsed.energyProfile);
+  const fitnessWeights = normalizeFitnessWeights(parsed.fitnessWeights);
 
   return {
     ...parsed,
     tasks,
     busySlots,
     energyProfile,
+    fitnessWeights,
     currentTime,
     baseDate,
     seed,
@@ -735,4 +749,18 @@ function clamp(value: number, min: number, max: number): number {
 function normalizeSeed(seed: number): number {
   const normalized = Math.floor(seed) >>> 0;
   return normalized === 0 ? 1 : normalized;
+}
+
+function normalizeFitnessWeights(
+  weights: ScheduleRequest["fitnessWeights"] | undefined,
+): FitnessWeights {
+  return {
+    deadlinePenalty:
+      weights?.deadlinePenalty ?? DEFAULT_FITNESS_WEIGHTS.deadlinePenalty,
+    energyPenalty:
+      weights?.energyPenalty ?? DEFAULT_FITNESS_WEIGHTS.energyPenalty,
+    earlinessBonus:
+      weights?.earlinessBonus ?? DEFAULT_FITNESS_WEIGHTS.earlinessBonus,
+    clusterBonus: weights?.clusterBonus ?? DEFAULT_FITNESS_WEIGHTS.clusterBonus,
+  };
 }

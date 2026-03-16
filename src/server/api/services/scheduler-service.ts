@@ -5,7 +5,11 @@
 
 import type { PrismaClient } from "@prisma/client";
 import { EnhancedScheduler } from "@/server/lib/scheduler";
-import type { ScheduleRequest, ScheduleResponse } from "@/server/lib/scheduler/types";
+import type {
+  ScheduleRequest,
+  ScheduleResponse,
+} from "@/server/lib/scheduler/types";
+import type { FitnessWeights } from "@/server/lib/scheduler/ea-core";
 import {
   taskToSchedulerTask,
   eventToBusySlot,
@@ -17,6 +21,14 @@ import {
 import { EventService } from "./event-service";
 import { PreferencesService } from "./preferences-service";
 import { CalendarService } from "./calendar-service";
+
+type WorkingPreferencesLearningFields = {
+  durationMultiplier?: number;
+  weightDeadlinePenalty?: number;
+  weightEnergyPenalty?: number;
+  weightEarlinessBonus?: number;
+  weightClusterBonus?: number;
+};
 
 export class SchedulerService {
   private scheduler: EnhancedScheduler;
@@ -49,7 +61,7 @@ export class SchedulerService {
       taskIds?: string[]; // If provided, only schedule these tasks
       baseDate?: Date;
       seed?: number;
-    }
+    },
   ): Promise<SchedulingResult> {
     console.log("\n🔵 [Scheduler] Starting scheduling for user:", userId);
     console.log("📋 Options:", {
@@ -64,19 +76,19 @@ export class SchedulerService {
 
     // Fetch scheduling context from database
     const context = await this.getSchedulingContext(
-      userId, 
-      options?.taskIds, 
-      timeHorizon
+      userId,
+      options?.taskIds,
+      timeHorizon,
     );
 
     if (!context.preferences) {
       throw new Error(
-        "User preferences not found. Please complete onboarding first."
+        "User preferences not found. Please complete onboarding first.",
       );
     }
 
     // Use the configured horizon from preferences if available
-    const finalTimeHorizon = 
+    const finalTimeHorizon =
       options?.timeHorizon ??
       context.preferences.schedulingConfig.horizonDays ??
       7;
@@ -135,14 +147,19 @@ export class SchedulerService {
       taskIds?: string[];
       baseDate?: Date;
       seed?: number;
-    }
+    },
   ): Promise<SchedulingResult> {
     const result = await this.scheduleTasksForUser(userId, options);
 
     // Only save events if scheduling was successful
     if (result.meta.status === "optimal" || result.meta.status === "feasible") {
-      console.log("💾 Saving", result.events.length, "events to calendar:", calendarId);
-      
+      console.log(
+        "💾 Saving",
+        result.events.length,
+        "events to calendar:",
+        calendarId,
+      );
+
       // Create events for each scheduled task using EventService
       await Promise.all(
         result.events.map((event) =>
@@ -155,13 +172,16 @@ export class SchedulerService {
             color: event.color,
             calendarId,
             taskId: event.taskId,
-          })
-        )
+          }),
+        ),
       );
-      
+
       console.log("✅ Events saved successfully");
     } else {
-      console.log("⚠️  Not saving events - scheduling status:", result.meta.status);
+      console.log(
+        "⚠️  Not saving events - scheduling status:",
+        result.meta.status,
+      );
     }
 
     return result;
@@ -177,7 +197,7 @@ export class SchedulerService {
       timeHorizon?: number;
       baseDate?: Date;
       seed?: number;
-    }
+    },
   ): Promise<SchedulingResult> {
     // Get all task-linked events for this user
     const taskEvents = await this.db.event.findMany({
@@ -194,7 +214,9 @@ export class SchedulerService {
 
     // Delete all existing task-linked events using EventService
     await Promise.all(
-      taskEvents.map((event) => this.eventService.deleteEvent(userId, event.id))
+      taskEvents.map((event) =>
+        this.eventService.deleteEvent(userId, event.id),
+      ),
     );
 
     // Schedule and save new events
@@ -207,10 +229,10 @@ export class SchedulerService {
   private async getSchedulingContext(
     userId: string,
     taskIds?: string[],
-    timeHorizon = 7
+    timeHorizon = 7,
   ): Promise<SchedulingContext> {
     console.log("📊 Fetching scheduling context...");
-    
+
     // Calculate date range for fetching events
     const now = new Date();
     const endDate = new Date(now);
@@ -225,7 +247,7 @@ export class SchedulerService {
     const allEvents = await this.calendarService.getAllEventsForUser(
       userId,
       now,
-      endDate
+      endDate,
     );
 
     console.log("📆 Found events:", {
@@ -238,7 +260,7 @@ export class SchedulerService {
     const scheduledTaskIds = new Set(
       allEvents
         .filter((event) => event.taskId !== null)
-        .map((event) => event.taskId!)
+        .map((event) => event.taskId!),
     );
 
     console.log("✅ Already scheduled task IDs:", Array.from(scheduledTaskIds));
@@ -292,7 +314,8 @@ export class SchedulerService {
         title: e.title,
         start: e.start.toISOString(),
         end: e.end.toISOString(),
-        duration: Math.round((e.end.getTime() - e.start.getTime()) / 60000) + "min",
+        duration:
+          Math.round((e.end.getTime() - e.start.getTime()) / 60000) + "min",
         isTaskLinked: e.taskId !== null,
       })),
     });
@@ -321,34 +344,52 @@ export class SchedulerService {
   ): ScheduleRequest {
     const currentTime = context.currentTime ?? new Date();
     const scheduleBaseDate = baseDate ?? context.baseDate ?? new Date();
+    const prefs = context.preferences
+      .workingPreferences as typeof context.preferences.workingPreferences &
+      WorkingPreferencesLearningFields;
+    const durationMultiplier = prefs.durationMultiplier ?? 1;
+    const fitnessWeights: FitnessWeights = {
+      deadlinePenalty: prefs.weightDeadlinePenalty ?? 1,
+      energyPenalty: prefs.weightEnergyPenalty ?? 1,
+      earlinessBonus: prefs.weightEarlinessBonus ?? 1,
+      clusterBonus: prefs.weightClusterBonus ?? 1,
+    };
 
-    const schedulerTasks = context.tasks.map(taskToSchedulerTask);
-    const busySlots = context.events.map(eventToBusySlot);
-    const workingHours = preferencesToWorkingHours(
-      context.preferences.workingPreferences
+    const schedulerTasks = context.tasks.map((task) =>
+      taskToSchedulerTask(task, durationMultiplier),
     );
+    const busySlots = context.events.map(eventToBusySlot);
+    const workingHours = preferencesToWorkingHours(prefs);
 
     console.log("🔄 Transforming to scheduler format:");
-    console.log("  Tasks:", schedulerTasks.map(t => ({
-      id: t.id,
-      priority: t.priority,
-      duration: t.durationMinutes + "min",
-      deadline: t.deadline,
-    })));
+    console.log(
+      "  Tasks:",
+      schedulerTasks.map((t) => ({
+        id: t.id,
+        priority: t.priority,
+        duration: t.durationMinutes + "min",
+        deadline: t.deadline,
+      })),
+    );
     console.log("  Busy slots:", busySlots.length);
-    console.log("  Working hours per day:", workingHours.map((wh, idx) => ({
-      day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][idx],
-      hours: wh.startTime === "00:00" && wh.endTime === "00:00" ? "OFF" : `${wh.startTime}-${wh.endTime}`,
-    })));
+    console.log(
+      "  Working hours per day:",
+      workingHours.map((wh, idx) => ({
+        day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][idx],
+        hours:
+          wh.startTime === "00:00" && wh.endTime === "00:00"
+            ? "OFF"
+            : `${wh.startTime}-${wh.endTime}`,
+      })),
+    );
 
     return {
       timeHorizon,
       tasks: schedulerTasks,
       busySlots,
       workingHours,
-      energyProfile: preferencesToEnergyProfile(
-        context.preferences.workingPreferences
-      ),
+      energyProfile: preferencesToEnergyProfile(prefs),
+      fitnessWeights,
       baseDate: scheduleBaseDate,
       currentTime,
       seed,
@@ -360,7 +401,7 @@ export class SchedulerService {
    */
   private buildSchedulingResult(
     response: ScheduleResponse,
-    context: SchedulingContext
+    context: SchedulingContext,
   ): SchedulingResult {
     // Map scheduled task IDs
     const scheduledTaskIds = response.tasks.map((t) => t.id);
@@ -371,14 +412,16 @@ export class SchedulerService {
     console.log("\n📊 Scheduling Result:");
     console.log("✅ Scheduled:", scheduledTaskIds.length, "tasks");
     console.log("❌ Unscheduled:", unscheduledTaskIds.length, "tasks");
-    
+
     if (unscheduledTaskIds.length > 0) {
       const unscheduledTasks = context.tasks.filter((t) =>
-        unscheduledTaskIds.includes(t.id)
+        unscheduledTaskIds.includes(t.id),
       );
       console.log("⚠️  Unscheduled tasks details:");
       unscheduledTasks.forEach((task) => {
-        console.log(`  - ${task.title} (${task.durationMinutes}min, priority: ${task.priority})`);
+        console.log(
+          `  - ${task.title} (${task.durationMinutes}min, priority: ${task.priority})`,
+        );
       });
     }
 
@@ -398,7 +441,9 @@ export class SchedulerService {
     if (events.length > 0) {
       console.log("🎯 Scheduled events:");
       events.forEach((event) => {
-        console.log(`  - ${event.title}: ${event.start.toLocaleString()} - ${event.end.toLocaleString()}`);
+        console.log(
+          `  - ${event.title}: ${event.start.toLocaleString()} - ${event.end.toLocaleString()}`,
+        );
       });
     }
 

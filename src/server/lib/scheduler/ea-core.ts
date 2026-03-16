@@ -47,8 +47,8 @@ export interface EATask {
 
 /** Per-task debug info collected from a final schedule — used by explain-service. */
 export interface TaskDebugInfo {
-  energyAtSlot: number;              // 0–1, EA energy profile value at scheduled hour
-  deadlineDistanceMinutes: number;   // positive = minutes remaining before deadline
+  energyAtSlot: number; // 0–1, EA energy profile value at scheduled hour
+  deadlineDistanceMinutes: number; // positive = minutes remaining before deadline
   isInLocationCluster: boolean;
   penaltiesApplied: string[];
   bonusesApplied: string[];
@@ -64,12 +64,27 @@ export interface EvolveResult {
   seed: number;
 }
 
+export interface FitnessWeights {
+  deadlinePenalty: number;
+  energyPenalty: number;
+  earlinessBonus: number;
+  clusterBonus: number;
+}
+
+export const DEFAULT_FITNESS_WEIGHTS: FitnessWeights = {
+  deadlinePenalty: 1,
+  energyPenalty: 1,
+  earlinessBonus: 1,
+  clusterBonus: 1,
+};
+
 export interface EvolveOptions {
   timeHorizon?: number; // default 7
   populationSize?: number; // default 80
   generations?: number; // default 300
   timeoutSeconds?: number; // default 10.0
   seed?: number; // optional deterministic seed
+  fitnessWeights?: FitnessWeights;
 }
 
 // ============================================================================
@@ -289,11 +304,7 @@ export function getValidStartSlots(
   granularity = GRANULARITY,
 ): number[] {
   const valid: number[] = [];
-  for (
-    let day = 0;
-    day < Math.floor(horizonMinutes / MINUTES_PER_DAY);
-    day++
-  ) {
+  for (let day = 0; day < Math.floor(horizonMinutes / MINUTES_PER_DAY); day++) {
     const [gs, ge] = getDayWorkingRange(day, whParsed);
     if (gs === ge) continue;
     let slot = Math.max(gs, earliestStart);
@@ -312,10 +323,7 @@ export function getValidStartSlots(
  * Return the energy level for a given global start minute.
  * Indexes into the 24-element hourly energy profile.
  */
-export function getEnergyAt(
-  startMin: number,
-  energyLevels: number[],
-): number {
+export function getEnergyAt(startMin: number, energyLevels: number[]): number {
   const hour = Math.floor((startMin % MINUTES_PER_DAY) / 60);
   return energyLevels[Math.min(hour, energyLevels.length - 1)] ?? 0.5;
 }
@@ -398,6 +406,7 @@ export function calculateFitness(
   whParsed: Array<[number, number]>,
   taskMap: Map<string, EATask>,
   deadlineMinutes: Map<string, number>,
+  weights: FitnessWeights = DEFAULT_FITNESS_WEIGHTS,
 ): number {
   // O(N log N) overlap detection via sorted sweep
   const intervals: Array<[number, number, string]> = tasks
@@ -427,7 +436,7 @@ export function calculateFitness(
 
     // Deadline penalty
     const dl = deadlineMinutes.get(task.id);
-    if (dl !== undefined && end > dl) p += 10000;
+    if (dl !== undefined && end > dl) p += 10000 * weights.deadlinePenalty;
 
     // Dependency order penalty
     for (const dep of task.dependsOn) {
@@ -450,7 +459,9 @@ export function calculateFitness(
 
     // Energy matching
     const energy = getEnergyAt(start, energyLevels);
-    if (task.complexity >= 0.7 && energy < 0.5) p += 200;
+    if (task.complexity >= 0.7 && energy < 0.5) {
+      p += 200 * weights.energyPenalty;
+    }
     if (task.complexity >= 0.7 && energy >= 0.8) b += 150;
 
     // Preferred start time soft penalty
@@ -460,7 +471,7 @@ export function calculateFitness(
     }
 
     // Earliness bonus
-    b += task.priority * (10000 - start) / 100;
+    b += (weights.earlinessBonus * task.priority * (10000 - start)) / 100;
 
     total += p - b;
   }
@@ -475,7 +486,9 @@ export function calculateFitness(
   }
   let clusterBonus = 0;
   for (const count of locDay.values()) {
-    if (count >= 2) clusterBonus += 100 * count;
+    if (count >= 2) {
+      clusterBonus += 100 * weights.clusterBonus * count;
+    }
   }
   total -= clusterBonus;
 
@@ -589,7 +602,10 @@ function mutate(
     for (const dep of task.dependsOn) {
       const depTask = taskMap.get(dep);
       if (depTask && dep in ind) {
-        earliest = Math.max(earliest, (ind[dep] ?? 0) + depTask.durationMinutes);
+        earliest = Math.max(
+          earliest,
+          (ind[dep] ?? 0) + depTask.durationMinutes,
+        );
       }
     }
 
@@ -597,7 +613,10 @@ function mutate(
     let latest = horizon - task.durationMinutes;
     for (const dependentId of reverseDeps.get(task.id) ?? []) {
       if (dependentId in ind) {
-        latest = Math.min(latest, (ind[dependentId] ?? latest) - task.durationMinutes);
+        latest = Math.min(
+          latest,
+          (ind[dependentId] ?? latest) - task.durationMinutes,
+        );
       }
     }
 
@@ -625,7 +644,8 @@ function mutate(
       if (
         pos > lo &&
         (best === undefined ||
-          Math.abs((base[pos - 1] ?? 0) - candidate) < Math.abs(best - candidate))
+          Math.abs((base[pos - 1] ?? 0) - candidate) <
+            Math.abs(best - candidate))
       ) {
         best = base[pos - 1];
       }
@@ -649,8 +669,7 @@ function crossover(
   const result: EASchedule = {};
   const keys = new Set([...Object.keys(p1), ...Object.keys(p2)]);
   for (const k of keys) {
-    result[k] =
-      rng() < 0.5 ? (p1[k] ?? p2[k] ?? 0) : (p2[k] ?? p1[k] ?? 0);
+    result[k] = rng() < 0.5 ? (p1[k] ?? p2[k] ?? 0) : (p2[k] ?? p1[k] ?? 0);
   }
   return result;
 }
@@ -665,7 +684,11 @@ function tournament(
   rng: () => number,
   k = 3,
 ): EASchedule {
-  const indices = randomSample(population.length, Math.min(k, population.length), rng);
+  const indices = randomSample(
+    population.length,
+    Math.min(k, population.length),
+    rng,
+  );
   let bestIdx = indices[0]!;
   for (const idx of indices) {
     if ((fitnesses[idx] ?? Infinity) < (fitnesses[bestIdx] ?? Infinity)) {
@@ -703,7 +726,8 @@ export function evolve(
   const generations = options?.generations ?? 300;
   const timeoutSeconds = options?.timeoutSeconds ?? 10.0;
   const seed = normalizeSeed(
-    options?.seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0),
+    options?.seed ??
+      (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0,
   );
   const rng = createMulberry32(seed);
 
@@ -742,15 +766,27 @@ export function evolve(
       whParsed,
       taskMap,
       deadlineMinutes,
+      options?.fitnessWeights,
     );
 
   // ── Initial population ─────────────────────────────────────────────────────
   let pop: EASchedule[] = Array.from({ length: populationSize }, () =>
-    createIndividual(tasks, sortedIds, timeHorizon, taskMap, baseSlots, whParsed, rng),
+    createIndividual(
+      tasks,
+      sortedIds,
+      timeHorizon,
+      taskMap,
+      baseSlots,
+      whParsed,
+      rng,
+    ),
   );
   let fits = pop.map(score);
 
-  const bestIdx = fits.reduce((bi, f, i) => (f < (fits[bi] ?? Infinity) ? i : bi), 0);
+  const bestIdx = fits.reduce(
+    (bi, f, i) => (f < (fits[bi] ?? Infinity) ? i : bi),
+    0,
+  );
   let bestInd = { ...pop[bestIdx]! };
   let bestFit = fits[bestIdx] ?? 0;
   const curve: number[] = [bestFit];
@@ -858,12 +894,18 @@ export function computeTaskDebugInfo(
     const penaltiesApplied: string[] = [];
     const bonusesApplied: string[] = [];
 
-    if (dl !== undefined && end > dl) penaltiesApplied.push("deadline_violated");
-    if (task.complexity >= 0.7 && energy < 0.5) penaltiesApplied.push("low_energy_for_complex");
-    if (task.preferredStartAfter !== undefined && (start % MINUTES_PER_DAY) < task.preferredStartAfter) {
+    if (dl !== undefined && end > dl)
+      penaltiesApplied.push("deadline_violated");
+    if (task.complexity >= 0.7 && energy < 0.5)
+      penaltiesApplied.push("low_energy_for_complex");
+    if (
+      task.preferredStartAfter !== undefined &&
+      start % MINUTES_PER_DAY < task.preferredStartAfter
+    ) {
       penaltiesApplied.push("before_preferred_start");
     }
-    if (task.complexity >= 0.7 && energy >= 0.8) bonusesApplied.push("high_energy_match");
+    if (task.complexity >= 0.7 && energy >= 0.8)
+      bonusesApplied.push("high_energy_match");
     if (isInLocationCluster) bonusesApplied.push("location_cluster");
 
     result[task.id] = {

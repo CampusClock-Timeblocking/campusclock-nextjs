@@ -315,6 +315,20 @@ model WorkingPreferences {
   alertnessByHour Float[] // Value between 0 and 1 for each hour of the day
   // REVIEW: Add preferred modes (e.g. "creative", "deep", "admin" with times and weights)
 
+  // Duration learning
+  durationMultiplier   Float @default(1.0)
+  durationObservations Int   @default(0)
+
+  // Fitness weight overrides
+  weightDeadlinePenalty Float @default(1.0)
+  weightEnergyPenalty   Float @default(1.0)
+  weightEarlinessBonus  Float @default(1.0)
+  weightClusterBonus    Float @default(1.0)
+
+  // Outcome counters for adaptive deadline pressure
+  deadlineMissCount  Int @default(0)
+  deadlineTotalCount Int @default(0)
+
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

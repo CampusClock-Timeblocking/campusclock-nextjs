@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { createTaskInputSchema, UpdateTaskInputSchema } from "@/lib/zod";
 import { inferMissingTaskFields } from "../services/ai-infer-service";
+import { LearningService } from "../services/learning-service";
 
 export const taskRouter = createTRPCRouter({
   create: protectedProcedure
@@ -123,5 +124,78 @@ export const taskRouter = createTRPCRouter({
       });
 
       return { success: true };
+    }),
+
+  complete: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        startTime: z.date().optional(),
+        endTime: z.date(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingTask = await ctx.db.task.findFirst({
+        where: {
+          id: input.id,
+          userId: ctx.session.user.id,
+        },
+        select: {
+          id: true,
+          durationMinutes: true,
+        },
+      });
+
+      if (!existingTask) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Task not found",
+        });
+      }
+
+      if (input.startTime && input.startTime >= input.endTime) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "startTime must be before endTime",
+        });
+      }
+
+      const task = await ctx.db.task.update({
+        where: {
+          id: input.id,
+          userId: ctx.session.user.id,
+        },
+        data: {
+          status: "COMPLETED",
+        },
+      });
+
+      const inferredStartTime = new Date(
+        input.endTime.getTime() - (task.durationMinutes ?? 60) * 60_000,
+      );
+      const startTime = input.startTime ?? inferredStartTime;
+
+      if (startTime >= input.endTime) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Computed startTime must be before endTime",
+        });
+      }
+
+      await ctx.db.taskCompletion.create({
+        data: {
+          taskId: input.id,
+          startTime,
+          endTime: input.endTime,
+        },
+      });
+
+      void LearningService.processCompletion(
+        ctx.db,
+        input.id,
+        ctx.session.user.id,
+      );
+
+      return task;
     }),
 });

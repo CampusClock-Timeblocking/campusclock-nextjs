@@ -94,11 +94,19 @@ export interface SchedulingResult {
  * @param task - Task from Prisma database
  * @returns Scheduler-ready task
  */
-export function taskToSchedulerTask(task: Task): ValidatedTask {
+export function taskToSchedulerTask(
+  task: Task,
+  durationMultiplier = 1,
+): ValidatedTask {
+  const adjustedDurationMinutes = Math.max(
+    15,
+    Math.round((task.durationMinutes ?? 60) * durationMultiplier),
+  );
+
   return {
     id: task.id,
     priority: normalizePriority(task.priority),
-    durationMinutes: task.durationMinutes ?? 60, // Default to 1 hour
+    durationMinutes: adjustedDurationMinutes,
     deadline: task.due?.toISOString() ?? undefined,
     complexity: normalizeComplexity(task.complexity),
     location: "Office", // TODO: Add location field to Task model if needed
