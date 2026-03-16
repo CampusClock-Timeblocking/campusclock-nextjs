@@ -60,6 +60,13 @@ export interface SchedulingContext {
 export interface SchedulingResult {
   scheduledTaskIds: string[]; // Tasks that got scheduled
   unscheduledTaskIds: string[]; // Tasks that couldn't fit
+  unscheduledTasks: Array<{
+    id: string;
+    title: string;
+    durationMinutes: number;
+    due: Date | null;
+    priority: number | null;
+  }>;
   events: Array<{
     // New calendar events to create
     taskId: string;

@@ -17,7 +17,6 @@ import {
   differenceInMinutes,
   isValid,
   parseISO,
-  startOfDay,
 } from "date-fns";
 import { z } from "zod";
 import {
@@ -38,6 +37,7 @@ import type {
   SoftConstraintAnalysis,
   ValidatedScheduleRequest,
   ValidatedTask,
+  WorkingHours,
   WorkloadBalanceAnalysis,
 } from "./types";
 
@@ -342,10 +342,14 @@ export function validateScheduleRequest(
 
   const currentTime = parsed.currentTime ?? new Date();
   const baseDate = parsed.baseDate
-    ? startOfDay(parsed.baseDate)
-    : startOfDay(currentTime);
+    ? startOfUtcDay(parsed.baseDate)
+    : startOfUtcDay(currentTime);
   const seed = normalizeSeed(
     parsed.seed ?? (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0,
+  );
+  const workingHours = rotateWorkingHoursForBaseDate(
+    parsed.workingHours,
+    baseDate,
   );
 
   // Normalize tasks
@@ -389,6 +393,7 @@ export function validateScheduleRequest(
     ...parsed,
     tasks,
     busySlots,
+    workingHours,
     energyProfile,
     fitnessWeights,
     currentTime,
@@ -746,8 +751,29 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function startOfUtcDay(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+}
+
+function weekdayIndexFromUtcDate(date: Date): number {
+  const day = date.getUTCDay();
+  return day === 0 ? 6 : day - 1;
+}
+
+function rotateWorkingHoursForBaseDate(
+  workingHours: WorkingHours[],
+  baseDate: Date,
+): WorkingHours[] {
+  const startIndex = weekdayIndexFromUtcDate(baseDate);
+  return workingHours.map(
+    (_, index) => workingHours[(index + startIndex) % workingHours.length]!,
+  );
+}
+
 function normalizeSeed(seed: number): number {
-  const normalized = Math.floor(seed) >>> 0;
+  const normalized = (Math.floor(seed) >>> 0) & 0x7fffffff;
   return normalized === 0 ? 1 : normalized;
 }
 

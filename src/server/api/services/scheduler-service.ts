@@ -30,6 +30,8 @@ type WorkingPreferencesLearningFields = {
   weightClusterBonus?: number;
 };
 
+const SCHEDULER_MAX_HORIZON_EXTENSIONS = 7;
+
 export class SchedulerService {
   private scheduler: EnhancedScheduler;
   private eventService: EventService;
@@ -43,7 +45,7 @@ export class SchedulerService {
       generations: 300,
       timeoutSeconds: 10,
       successThreshold: 0.8,
-      maxHorizonExtensions: 7,
+      maxHorizonExtensions: SCHEDULER_MAX_HORIZON_EXTENSIONS,
     });
     this.eventService = new EventService(db);
     this.preferencesService = new PreferencesService(db);
@@ -236,10 +238,14 @@ export class SchedulerService {
     console.log("📊 Fetching scheduling context...");
 
     // Anchor the event-fetch window to the solver's baseDate so busy slots
-    // and the scheduling window are aligned. Falls back to now for live runs.
+    // and the scheduling window are aligned. Include the solver's possible
+    // horizon extensions so later-day busy conflicts are still respected.
+    // Falls back to now for live runs.
     const windowStart = baseDate ?? new Date();
     const endDate = new Date(windowStart);
-    endDate.setDate(endDate.getDate() + timeHorizon);
+    endDate.setDate(
+      endDate.getDate() + timeHorizon + SCHEDULER_MAX_HORIZON_EXTENSIONS,
+    );
 
     console.log("📅 Date range:", {
       from: windowStart.toISOString(),
@@ -452,9 +458,20 @@ export class SchedulerService {
 
     console.log("🏁 Scheduler complete!\n");
 
+    const unscheduledTasks = context.tasks
+      .filter((t) => unscheduledTaskIds.includes(t.id))
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        durationMinutes: t.durationMinutes ?? 60,
+        due: t.due ?? null,
+        priority: t.priority ?? null,
+      }));
+
     return {
       scheduledTaskIds,
       unscheduledTaskIds,
+      unscheduledTasks,
       events,
       meta: {
         status: response.status,

@@ -160,7 +160,7 @@ function randomSample(n: number, k: number, rng: () => number): number[] {
 }
 
 function normalizeSeed(input: number): number {
-  const normalized = Math.floor(input) >>> 0;
+  const normalized = (Math.floor(input) >>> 0) & 0x7fffffff;
   return normalized === 0 ? 1 : normalized;
 }
 

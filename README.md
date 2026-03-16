@@ -24,6 +24,17 @@ To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the fo
 
 You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
 
+## Scheduler E2E Tests
+
+Backend scheduler e2e coverage runs through the tRPC router with a dedicated Postgres database.
+
+1. Start a separate Postgres database for tests.
+2. Set `TEST_DATABASE_URL` to that database.
+3. If you need to apply migrations first, run with `E2E_RUN_MIGRATIONS=1`.
+4. Run `npm run test:e2e:scheduler`.
+
+The suite truncates app tables between tests and should not be pointed at your shared development database. Prisma migrations are opt-in so repeated runs against a shared test database do not contend on the advisory migration lock.
+
 ## How do I deploy this?
 
 Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.

@@ -299,7 +299,7 @@ export class SchedulePreviewService {
 }
 
 function normalizeSeed(seed: number): number {
-  const normalized = Math.floor(seed) >>> 0;
+  const normalized = (Math.floor(seed) >>> 0) & 0x7fffffff;
   return normalized === 0 ? 1 : normalized;
 }
 

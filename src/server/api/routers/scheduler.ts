@@ -536,6 +536,7 @@ export const schedulerRouter = createTRPCRouter({
         return {
           scheduledTaskIds,
           unscheduledTaskIds: [] as string[],
+          unscheduledTasks: [] as Array<{ id: string; title: string; durationMinutes: number; due: Date | null; priority: number | null }>,
           events: previewEvents.map((event) => ({
             taskId: event.taskId,
             start: new Date(event.start),

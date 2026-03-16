@@ -37,6 +37,13 @@ import {
 type SchedulingResult = {
   scheduledTaskIds: string[];
   unscheduledTaskIds: string[];
+  unscheduledTasks?: Array<{
+    id: string;
+    title: string;
+    durationMinutes: number;
+    due: Date | null;
+    priority: number | null;
+  }>;
   events: Array<{
     taskId: string;
     start: Date;
@@ -377,17 +384,47 @@ export function ScheduleButton() {
                 )}
               </div>
 
-              {/* Warning if not all tasks scheduled */}
+              {/* Unscheduled tasks detail */}
               {previewResult.unscheduledTaskIds.length > 0 && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {previewResult.unscheduledTaskIds.length} Aufgabe
-                    {previewResult.unscheduledTaskIds.length !== 1 ? "n" : ""}{" "}
-                    konnten nicht eingeplant werden. Versuche die Arbeitszeiten oder
-                    Deadlines anzupassen.
-                  </AlertDescription>
-                </Alert>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                    <h4 className="text-sm font-semibold text-destructive">
+                      {previewResult.unscheduledTaskIds.length} Aufgabe
+                      {previewResult.unscheduledTaskIds.length !== 1 ? "n" : ""}{" "}
+                      nicht eingeplant
+                    </h4>
+                  </div>
+                  <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-lg border border-destructive/20 bg-destructive/5 p-2">
+                    {(previewResult.unscheduledTasks ?? []).map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-start justify-between rounded-md px-2 py-1.5 text-sm"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{task.title}</div>
+                          <div className="text-muted-foreground text-xs flex gap-2 mt-0.5">
+                            <span>{task.durationMinutes} min</span>
+                            {task.due && (
+                              <span>
+                                · Fällig{" "}
+                                {new Intl.DateTimeFormat("de-DE", {
+                                  month: "short",
+                                  day: "numeric",
+                                }).format(new Date(task.due))}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(previewResult.unscheduledTasks ?? []).length === 0 && (
+                      <p className="text-muted-foreground text-xs px-2 py-1">
+                        Passe Arbeitszeiten oder Deadlines an, um diese Aufgaben einzuplanen.
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Scheduled Events with optional explanation icons */}
