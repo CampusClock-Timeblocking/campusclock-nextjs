@@ -153,21 +153,22 @@ export const schedulerRouter = createTRPCRouter({
           status: "TO_DO",
         },
       }),
-      ctx.db.event.count({
-        where: {
-          calendar: {
-            userId: ctx.session.user.id,
-          },
-          taskId: {
-            not: null,
-          },
-        },
-      }),
+      // Tasks that have at least one linked calendar event — the authoritative
+      // "is scheduled" signal. Keeps scheduledTasks + unscheduledTasks == totalTasks.
       ctx.db.task.count({
         where: {
           userId: ctx.session.user.id,
           status: "TO_DO",
-          scheduledTime: null,
+          Event: { some: {} },
+        },
+      }),
+      // Tasks with no linked event — never uses Task.scheduledTime, which the
+      // scheduler does not write to.
+      ctx.db.task.count({
+        where: {
+          userId: ctx.session.user.id,
+          status: "TO_DO",
+          Event: { none: {} },
         },
       }),
     ]);

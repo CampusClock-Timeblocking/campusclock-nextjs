@@ -11,14 +11,17 @@ Goal: make preview/feedback/confirm behavior correct, deterministic, atomic, tim
 3. Session-based preview flow wiring (`schedulePreview`, `applyFeedbackAndPreview` with session, `cancelPreview`, `confirmAndSave` using stored preview events).
 4. **Rollback conflict guard** (issue #1): `Task.updatedAt` added via `@updatedAt`; rollback uses atomic compare-and-swap (`updateMany` with `where: { updatedAt }`) — no read-then-write race. Tests in `schedule-preview-service.test.ts`.
 5. **Hard cutover** (issue #2): `scheduleAndSave` route removed from router; "Jetzt einplanen" button removed from UI. Single entry point is now `schedulePreview` → preview dialog → `confirmAndSave`.
+6. **Close-confirm race guard** (issue #4): `DialogContent` blocks `onInteractOutside` and `onEscapeKeyDown` while `confirmMutation.isPending` to prevent accidental cancel mid-save.
+7. **Busy-slot/baseDate alignment** (issue #5): `getSchedulingContext` now takes `baseDate` and uses it as the event-fetch window start; call site passes `options?.baseDate`.
+8. **Stats event-linked truth** (issue #6): `getSchedulingStats` uses `Event: { some/none: {} }` relation filters — `scheduledTasks + unscheduledTasks == totalTasks` and `Task.scheduledTime` is no longer read.
 
 ### Remaining issues
 1. ~~Rollback conflict guard~~ — **Done.**
 2. ~~Single-path cutover~~ — **Done.**
 3. ~~Confirm save path skips cache invalidation~~ — **Done.** `confirmAndSave` now calls `EventService.invalidateEventWeeks` after the transaction.
-4. **Close-confirm race is still possible from dialog controls**: dialog can still close via non-button interactions while confirm is pending, potentially triggering cancel semantics.
-5. **Busy-slot window is still anchored to `now` instead of scheduling `baseDate`**.
-6. **Scheduling stats still rely on `Task.scheduledTime`** instead of event-linked truth.
+4. ~~Close-confirm race is still possible from dialog controls~~ — **Done.** `DialogContent` now intercepts `onInteractOutside` and `onEscapeKeyDown` and calls `e.preventDefault()` when `confirmMutation.isPending`, preventing accidental cancel during an in-flight save.
+5. ~~Busy-slot window is still anchored to `now` instead of scheduling `baseDate`~~ — **Done.** `getSchedulingContext` now accepts `baseDate` and uses it as the event-fetch window start; call site in `scheduleTasksForUser` passes `options?.baseDate`.
+6. ~~Scheduling stats still rely on `Task.scheduledTime`~~ — **Done.** `getSchedulingStats` now counts `scheduledTasks` as `TO_DO` tasks with `Event: { some: {} }` and `unscheduledTasks` as `TO_DO` tasks with `Event: { none: {} }`, so the three counts are always consistent and never touch `Task.scheduledTime`.
 7. **Timezone consistency work is not implemented** (canonical `SchedulingConfig.timezone` not enforced end-to-end).
 8. **`rescheduleAll` still over-deletes** (deletes all task-linked events, not horizon-scoped).
 9. **Legacy save path (`scheduleAndSaveEvents`) is still non-atomic** (`Promise.all(createEvent)` partial-write risk).
@@ -91,12 +94,12 @@ Goal: make preview/feedback/confirm behavior correct, deterministic, atomic, tim
 1. ~~Add task-level conflict guard~~ — **Done.**
 2. ~~Finish hard cutover~~ — **Done.**
 3. ~~Add cache invalidation for confirm path~~ — **Done.**
-4. Prevent close-confirm race:
-   block dialog close while confirm mutation is pending (`onInteractOutside`/`onEscapeKeyDown` guards).
-5. Align scheduling context window to `baseDate`:
-   in `SchedulerService.getSchedulingContext`, fetch events for `[baseDate, baseDate + horizon]`.
-6. Replace stats logic with event-linked counts:
-   stop querying `scheduledTime` and compute unscheduled/scheduled from task-linked events.
+4. ~~Prevent close-confirm race~~ — **Done.**
+   ~~block dialog close while confirm mutation is pending (`onInteractOutside`/`onEscapeKeyDown` guards).~~
+5. ~~Align scheduling context window to `baseDate`~~ — **Done.**
+   ~~in `SchedulerService.getSchedulingContext`, fetch events for `[baseDate, baseDate + horizon]`.~~
+6. ~~Replace stats logic with event-linked counts~~ — **Done.**
+   ~~stop querying `scheduledTime` and compute unscheduled/scheduled from task-linked events.~~
 7. Enforce canonical timezone path:
    `SchedulingConfig.timezone` for day/hour extraction, clustering, and explanation formatting.
 8. Make `rescheduleAll` horizon-scoped:

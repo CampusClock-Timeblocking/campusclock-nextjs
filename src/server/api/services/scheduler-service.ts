@@ -79,6 +79,7 @@ export class SchedulerService {
       userId,
       options?.taskIds,
       timeHorizon,
+      options?.baseDate,
     );
 
     if (!context.preferences) {
@@ -230,23 +231,25 @@ export class SchedulerService {
     userId: string,
     taskIds?: string[],
     timeHorizon = 7,
+    baseDate?: Date,
   ): Promise<SchedulingContext> {
     console.log("📊 Fetching scheduling context...");
 
-    // Calculate date range for fetching events
-    const now = new Date();
-    const endDate = new Date(now);
+    // Anchor the event-fetch window to the solver's baseDate so busy slots
+    // and the scheduling window are aligned. Falls back to now for live runs.
+    const windowStart = baseDate ?? new Date();
+    const endDate = new Date(windowStart);
     endDate.setDate(endDate.getDate() + timeHorizon);
 
     console.log("📅 Date range:", {
-      from: now.toISOString(),
+      from: windowStart.toISOString(),
       to: endDate.toISOString(),
     });
 
     // First, fetch ALL events (including Google Calendar) to find tasks that are already scheduled
     const allEvents = await this.calendarService.getAllEventsForUser(
       userId,
-      now,
+      windowStart,
       endDate,
     );
 

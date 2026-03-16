@@ -335,7 +335,15 @@ export function ScheduleButton() {
 
       {/* Preview + Feedback Dialog */}
       <Dialog open={showPreview} onOpenChange={handleDialogChange}>
-        <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden">
+        <DialogContent
+          className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden"
+          onInteractOutside={(e) => {
+            if (confirmMutation.isPending) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (confirmMutation.isPending) e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Stundenplan Vorschau</DialogTitle>
             <DialogDescription>
