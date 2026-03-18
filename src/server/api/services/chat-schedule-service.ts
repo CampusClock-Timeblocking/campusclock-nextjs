@@ -39,7 +39,9 @@ Zuordnungsregeln:
 - "Morgens" / "früh" → field=preferredStartAfter, operation=set, value=360 (06:00 = 6×60)
 - "Abends" → field=preferredStartAfter, operation=set, value=1020 (17:00 = 17×60)
 - "länger" / "mehr Zeit" → field=durationMinutes, operation=increase (30 Minuten mehr)
-- "kürzer" → field=durationMinutes, operation=decrease (15 Minuten weniger)
+- "kürzer" / "zu viel Zeit" / "viel zu lang" / "dauert nicht so lange" / "braucht nicht so viel Zeit" → field=durationMinutes, operation=decrease (15 Minuten weniger)
+- Wenn der Nutzer eine konkrete kürzere Dauer nennt wie "nur 30 Minuten", "eher 20 min" oder "maximal 45 Minuten":
+  field=durationMinutes, operation=set, value=<genannte Minutenanzahl>
 - "wichtiger" / "dringend" → field=priority, operation=increase
 - Wenn Aufgabe unklar oder nicht erkennbar: taskId="" und explanation als Rückfrage auf Deutsch
 - NIEMALS mehr als eine Aufgabe pro Antwort ändern`;

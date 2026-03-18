@@ -128,6 +128,16 @@ export class EnhancedScheduler {
       const wallStart = Date.now();
 
       // Run the evolutionary algorithm
+      // Prevent scheduling tasks in the past by computing the earliest
+      // valid minute offset relative to baseDate.
+      const earliestStartMinute = Math.max(
+        0,
+        Math.ceil(
+          (validated.currentTime.getTime() - validated.baseDate.getTime()) /
+            60000,
+        ),
+      );
+
       const {
         schedule: rawSchedule,
         fitness,
@@ -145,6 +155,7 @@ export class EnhancedScheduler {
           timeoutSeconds: this.timeoutSeconds,
           seed: validated.seed,
           fitnessWeights: validated.fitnessWeights,
+          earliestStartMinute,
         },
       );
 

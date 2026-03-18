@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { startOfWeek, endOfWeek } from "date-fns";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { SchedulerService } from "../services/scheduler-service";
 import {
@@ -72,6 +73,96 @@ export const schedulerRouter = createTRPCRouter({
         return {
           previewSessionId: previewSession.id,
           scheduleResult,
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /**
+   * Generate a reschedule preview for the current week.
+   * Collects already-scheduled task events + unscheduled tasks, runs the EA,
+   * and returns a preview session along with the old event IDs to delete on confirm.
+   */
+  rescheduleWeekPreview: protectedProcedure
+    .input(
+      z.object({
+        timeHorizon: z.number().int().min(1).max(30).optional(),
+        baseDate: z.date().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const schedulerService = new SchedulerService(ctx.db);
+      const previewService = new SchedulePreviewService(ctx.db);
+      const userId = ctx.session.user.id;
+      const baseDate = input.baseDate ?? new Date();
+      const timeHorizon = input.timeHorizon ?? 7;
+
+      const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
+
+      // Find task-linked events in the current week
+      const existingEvents = await ctx.db.event.findMany({
+        where: {
+          taskId: { not: null },
+          start: { gte: weekStart },
+          end: { lte: weekEnd },
+          calendar: { userId },
+        },
+        select: { id: true, taskId: true },
+      });
+
+      const oldEventIds = existingEvents.map((e) => e.id);
+      const scheduledTaskIds = [
+        ...new Set(existingEvents.map((e) => e.taskId!)),
+      ];
+
+      // Find unscheduled TO_DO tasks
+      const unscheduledTasks = await ctx.db.task.findMany({
+        where: {
+          userId,
+          status: "TO_DO",
+          Event: { none: {} },
+        },
+        select: { id: true },
+      });
+
+      const allTaskIds = [
+        ...scheduledTaskIds,
+        ...unscheduledTasks.map((t) => t.id),
+      ];
+
+      if (allTaskIds.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Keine Aufgaben zum Einplanen gefunden.",
+        });
+      }
+
+      try {
+        const scheduleResult = await schedulerService.scheduleTasksForUser(
+          userId,
+          { taskIds: allTaskIds, timeHorizon, baseDate },
+        );
+
+        const previewSession = await previewService.createPreviewSession({
+          userId,
+          seed: scheduleResult.meta.seed ?? 1,
+          baseDate,
+          timeHorizon,
+          previewEvents: scheduleResult.events,
+        });
+
+        return {
+          previewSessionId: previewSession.id,
+          scheduleResult,
+          oldEventIds,
         };
       } catch (error) {
         if (error instanceof Error) {
@@ -469,6 +560,7 @@ export const schedulerRouter = createTRPCRouter({
       z.object({
         previewSessionId: z.string().uuid(),
         calendarId: z.string().uuid(),
+        deleteEventIds: z.array(z.string().uuid()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -494,6 +586,16 @@ export const schedulerRouter = createTRPCRouter({
         const previewEvents = parsePreviewEvents(previewSession.previewEventsJson);
 
         await ctx.db.$transaction(async (tx) => {
+          // Delete old events when rescheduling
+          if (input.deleteEventIds && input.deleteEventIds.length > 0) {
+            await tx.event.deleteMany({
+              where: {
+                id: { in: input.deleteEventIds },
+                calendar: { userId },
+              },
+            });
+          }
+
           if (previewEvents.length > 0) {
             await tx.event.createMany({
               data: previewEvents.map((event) => ({
@@ -519,14 +621,32 @@ export const schedulerRouter = createTRPCRouter({
           });
         });
 
-        // Invalidate event/calendar caches for all weeks covered by new events
-        if (previewEvents.length > 0) {
+        // Invalidate event/calendar caches for all weeks covered by new + deleted events
+        if (previewEvents.length > 0 || (input.deleteEventIds && input.deleteEventIds.length > 0)) {
           const eventService = new EventService(ctx.db);
           const dates = previewEvents.map((e) => new Date(e.start));
           const endDates = previewEvents.map((e) => new Date(e.end));
-          const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-          const maxDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
-          await eventService.invalidateEventWeeks(userId, minDate, maxDate);
+
+          // Include deleted events date range if we fetched them before deletion
+          if (input.deleteEventIds && input.deleteEventIds.length > 0) {
+            // Deleted events were within the week boundaries, so use baseDate range
+            const session = await ctx.db.schedulePreviewSession.findUnique({
+              where: { id: previewSession.id },
+              select: { baseDate: true },
+            });
+            if (session) {
+              const weekStart = startOfWeek(session.baseDate, { weekStartsOn: 1 });
+              const weekEnd = endOfWeek(session.baseDate, { weekStartsOn: 1 });
+              dates.push(weekStart);
+              endDates.push(weekEnd);
+            }
+          }
+
+          if (dates.length > 0) {
+            const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+            const maxDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
+            await eventService.invalidateEventWeeks(userId, minDate, maxDate);
+          }
         }
 
         const scheduledTaskIds = Array.from(

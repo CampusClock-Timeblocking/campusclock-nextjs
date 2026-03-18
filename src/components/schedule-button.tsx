@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Info,
   Send,
+  RefreshCw,
 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,10 @@ export function ScheduleButton() {
   const [previewResult, setPreviewResult] = useState<SchedulingResult | null>(null);
   const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
 
+  // Reschedule mode state
+  const [isRescheduleMode, setIsRescheduleMode] = useState(false);
+  const [oldEventIds, setOldEventIds] = useState<string[]>([]);
+
   // Feedback loop state
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessage[]>([]);
   const [feedbackInput, setFeedbackInput] = useState("");
@@ -93,6 +98,8 @@ export function ScheduleButton() {
       setFeedbackInput("");
       setExplanations({});
       setPreviewResult(null);
+      setIsRescheduleMode(false);
+      setOldEventIds([]);
     }
   };
 
@@ -207,6 +214,24 @@ export function ScheduleButton() {
     },
   });
 
+  const rescheduleWeekMutation = api.scheduler.rescheduleWeekPreview.useMutation({
+    onSuccess: (result) => {
+      setPreviewSessionId(result.previewSessionId);
+      setPreviewResult(result.scheduleResult);
+      setOldEventIds(result.oldEventIds);
+      setIsRescheduleMode(true);
+      setFeedbackHistory([]);
+      setExplanations({});
+      setShowPreview(true);
+    },
+    onError: (error) => {
+      toast.error("Neuplanung fehlgeschlagen", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   const writableCalendar =
     calendars?.find(
@@ -229,6 +254,7 @@ export function ScheduleButton() {
     confirmMutation.mutate({
       calendarId: writableCalendar.id,
       previewSessionId,
+      ...(isRescheduleMode && oldEventIds.length > 0 ? { deleteEventIds: oldEventIds } : {}),
     });
   };
 
@@ -337,6 +363,26 @@ export function ScheduleButton() {
               </>
             )}
           </Button>
+          {stats && stats.scheduledTasks > 0 && (
+            <Button
+              onClick={() => rescheduleWeekMutation.mutate({ timeHorizon: 7 })}
+              disabled={rescheduleWeekMutation.isPending}
+              size="sm"
+              variant="outline"
+            >
+              {rescheduleWeekMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Berechne...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Neu planen
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -352,9 +398,13 @@ export function ScheduleButton() {
           }}
         >
           <DialogHeader>
-            <DialogTitle>Stundenplan Vorschau</DialogTitle>
+            <DialogTitle>
+              {isRescheduleMode ? "Woche neu planen" : "Stundenplan Vorschau"}
+            </DialogTitle>
             <DialogDescription>
-              Überprüfe den vorgeschlagenen Plan, bevor er gespeichert wird.
+              {isRescheduleMode
+                ? "Alle Aufgaben dieser Woche werden neu eingeplant."
+                : "Überprüfe den vorgeschlagenen Plan, bevor er gespeichert wird."}
             </DialogDescription>
           </DialogHeader>
 
@@ -505,7 +555,7 @@ export function ScheduleButton() {
               {/* Feedback input */}
               <div className="space-y-2">
                 <p className="text-muted-foreground text-xs">
-                  Passt das so? Gib Feedback auf Deutsch (z.B. &quot;Physik lieber nachmittags&quot;):
+                  Passt das so? Gib Feedback auf Deutsch, z.B. &quot;Physik lieber nachmittags&quot; oder &quot;Mathe braucht nur 30 Minuten&quot;:
                 </p>
                 <div className="flex gap-2">
                   <Textarea
@@ -517,7 +567,7 @@ export function ScheduleButton() {
                         handleSendFeedback();
                       }
                     }}
-                    placeholder="Dein Feedback…"
+                    placeholder="Dein Feedback, z.B. Aufgabe kürzer oder später…"
                     className="min-h-[2.5rem] resize-none"
                     rows={1}
                     disabled={feedbackMutation.isPending}

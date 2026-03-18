@@ -85,6 +85,7 @@ export interface EvolveOptions {
   timeoutSeconds?: number; // default 10.0
   seed?: number; // optional deterministic seed
   fitnessWeights?: FitnessWeights;
+  earliestStartMinute?: number; // default 0 — prevents scheduling in the past
 }
 
 // ============================================================================
@@ -516,21 +517,23 @@ function createIndividual(
   baseSlots: Map<string, number[]>,
   whParsed: Array<[number, number]>,
   rng: () => number,
+  earliestStartMinute = 0,
 ): EASchedule {
   const schedule: EASchedule = {};
 
-  // Next free start minute per day (initialised to day's working start)
+  // Next free start minute per day (initialised to day's working start,
+  // but never before earliestStartMinute on day 0)
   const dayNextStart: number[] = Array.from({ length: timeHorizon }, (_, d) => {
     const [gs] = getDayWorkingRange(d, whParsed);
-    return gs;
+    return Math.max(gs, d === 0 ? earliestStartMinute : gs);
   });
 
   for (const tid of sortedIds) {
     const task = taskMap.get(tid);
     if (!task) continue;
 
-    // Earliest start respecting dependencies
-    let earliest = 0;
+    // Earliest start respecting dependencies and earliestStartMinute
+    let earliest = earliestStartMinute;
     for (const dep of task.dependsOn) {
       const depTask = taskMap.get(dep);
       if (depTask && dep in schedule) {
@@ -744,7 +747,7 @@ export function evolve(
   const baseSlots = new Map<string, number[]>(
     tasks.map((t) => [
       t.id,
-      getValidStartSlots(0, t.durationMinutes, whParsed, horizon),
+      getValidStartSlots(options?.earliestStartMinute ?? 0, t.durationMinutes, whParsed, horizon),
     ]),
   );
 
@@ -779,6 +782,7 @@ export function evolve(
       baseSlots,
       whParsed,
       rng,
+      options?.earliestStartMinute ?? 0,
     ),
   );
   let fits = pop.map(score);

@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 
-type RootModule = typeof import("@/server/api/root");
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+type RootModule = Awaited<typeof import("@/server/api/root")>;
 
 export async function createAuthenticatedCaller(
   db: PrismaClient,
