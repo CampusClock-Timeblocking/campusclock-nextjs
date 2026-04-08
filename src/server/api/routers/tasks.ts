@@ -9,7 +9,42 @@ export const taskRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createTaskInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const data = await inferMissingTaskFields(input);
+      let projectContext:
+        | {
+            title: string;
+            deadline: Date | null;
+            status: string;
+          }
+        | undefined;
+
+      if (input.projectId) {
+        const project = await ctx.db.project.findFirst({
+          where: {
+            id: input.projectId,
+            userId: ctx.session.user.id,
+          },
+          select: {
+            title: true,
+            deadline: true,
+            status: true,
+          },
+        });
+
+        if (!project) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid projectId. Project not found for this user.",
+          });
+        }
+
+        projectContext = {
+          title: project.title,
+          deadline: project.deadline,
+          status: project.status,
+        };
+      }
+
+      const data = await inferMissingTaskFields(input, projectContext);
       const task = await ctx.db.task.create({
         data: {
           ...data.data,

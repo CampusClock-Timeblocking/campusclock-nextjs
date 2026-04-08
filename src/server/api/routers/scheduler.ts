@@ -15,6 +15,7 @@ import {
 import { explainScheduledTasks } from "../services/explain-service";
 import { parseScheduleFeedback } from "../services/chat-schedule-service";
 import { computeTaskDebugInfo } from "@/server/lib/scheduler/ea-core";
+import { getTaskClusterLocation } from "@/server/lib/scheduler/prisma-adapters";
 import { getOpenAIClient } from "@/server/lib/openai";
 import { EventService } from "../services/event-service";
 
@@ -330,7 +331,7 @@ export const schedulerRouter = createTRPCRouter({
         durationMinutes: t.durationMinutes ?? 60,
         deadline: t.due?.toISOString() ?? null,
         complexity: (t.complexity ?? 5) / 10,
-        location: "Office" as const,
+        location: getTaskClusterLocation(t.id, t.projectId),
         dependsOn: [] as string[],
         preferredStartAfter: t.preferredStartAfter ?? undefined,
       }));

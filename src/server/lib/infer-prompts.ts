@@ -1,13 +1,44 @@
+export interface TaskInferenceProjectContext {
+  title: string;
+  deadline?: Date | null;
+  status?: string | null;
+}
+
+function formatProjectDeadline(deadline: Date): string {
+  const isoDate = deadline.toISOString().slice(0, 10);
+  return isoDate ?? "unknown";
+}
+
+function formatProjectStatus(status: string): string {
+  return status.toLowerCase().replaceAll("_", " ");
+}
+
 export function getTaskInferencePrompt(
   title: string,
   description?: string | null,
-  projectTitle?: string | null,
+  projectContext?: TaskInferenceProjectContext,
 ) {
+  const projectLines: string[] = [];
+  if (projectContext?.title) {
+    projectLines.push(`Project: ${projectContext.title}`);
+  }
+  if (projectContext?.deadline) {
+    projectLines.push(
+      `Project deadline: ${formatProjectDeadline(projectContext.deadline)}`,
+    );
+  }
+  if (projectContext?.status) {
+    projectLines.push(
+      `Project status: ${formatProjectStatus(projectContext.status)}`,
+    );
+  }
+  const projectBlock = projectLines.join("\n");
+
   return `Analyze this task and provide realistic estimates:
 
 Task: ${title}
 ${description ? `Description: ${description}` : ""}
-${projectTitle ? `Project: ${projectTitle}` : ""}
+${projectBlock}
 
 Consider the complete picture:
 - Setup time (preparation, gathering materials, travel to location)

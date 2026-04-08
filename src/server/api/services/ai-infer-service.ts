@@ -1,5 +1,8 @@
 import { aiTaskInferenceResultSchema, type CreateTaskInput } from "@/lib/zod";
-import { getTaskInferencePrompt } from "@/server/lib/infer-prompts";
+import {
+  getTaskInferencePrompt,
+  type TaskInferenceProjectContext,
+} from "@/server/lib/infer-prompts";
 import { getOpenAIClient } from "@/server/lib/openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 
@@ -14,7 +17,10 @@ export interface InferenceResult<T> {
   data?: T;
 }
 
-export async function inferMissingTaskFields(task: CreateTaskInput) {
+export async function inferMissingTaskFields(
+  task: CreateTaskInput,
+  projectContext?: TaskInferenceProjectContext,
+) {
   const shouldInfer =
     !task.durationMinutes || !task.priority || !task.complexity;
   if (!shouldInfer)
@@ -37,7 +43,7 @@ export async function inferMissingTaskFields(task: CreateTaskInput) {
   }
 
   const { title, description } = task;
-  const prompt = getTaskInferencePrompt(title, description);
+  const prompt = getTaskInferencePrompt(title, description, projectContext);
 
   try {
     const completion = await client.chat.completions.create({

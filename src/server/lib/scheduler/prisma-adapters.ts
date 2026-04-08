@@ -85,6 +85,18 @@ export interface SchedulingResult {
   };
 }
 
+/**
+ * Build the scheduler location key used for clustering bonuses.
+ * - Tasks with a project share one key and can cluster together.
+ * - Tasks without a project get a unique key and never form artificial clusters.
+ */
+export function getTaskClusterLocation(
+  taskId: string,
+  projectId?: string | null,
+): string {
+  return projectId ? `project:${projectId}` : `none:${taskId}`;
+}
+
 // ============================================================================
 // ADAPTER FUNCTIONS - Convert Prisma types to scheduler types
 // ============================================================================
@@ -116,7 +128,7 @@ export function taskToSchedulerTask(
     durationMinutes: adjustedDurationMinutes,
     deadline: task.due?.toISOString() ?? undefined,
     complexity: normalizeComplexity(task.complexity),
-    location: "Office", // TODO: Add location field to Task model if needed
+    location: getTaskClusterLocation(task.id, task.projectId),
     preferredStartAfter: task.preferredStartAfter ?? undefined,
   };
 }
