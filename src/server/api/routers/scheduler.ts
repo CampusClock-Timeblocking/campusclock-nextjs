@@ -235,6 +235,35 @@ export const schedulerRouter = createTRPCRouter({
     }),
 
   /**
+   * Clear all automatically scheduled events (task-linked events) for the user.
+   * Useful for testing — wipes the slate without touching manual calendar entries.
+   */
+  clearAllScheduledEvents: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    // Find all task-linked events belonging to the user's calendars
+    const events = await ctx.db.event.findMany({
+      where: {
+        taskId: { not: null },
+        calendar: { userId },
+      },
+      select: { id: true },
+    });
+
+    if (events.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    await ctx.db.event.deleteMany({
+      where: {
+        id: { in: events.map((e) => e.id) },
+      },
+    });
+
+    return { deletedCount: events.length };
+  }),
+
+  /**
    * Get scheduling statistics for the current user
    */
   getSchedulingStats: protectedProcedure.query(async ({ ctx }) => {

@@ -9,6 +9,7 @@ import {
   Info,
   Send,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -232,6 +233,23 @@ export function ScheduleButton() {
     },
   });
 
+  const clearScheduledMutation = api.scheduler.clearAllScheduledEvents.useMutation({
+    onSuccess: (result) => {
+      toast.success(`${result.deletedCount} eingeplante Aufgabe${result.deletedCount !== 1 ? "n" : ""} gelöscht`, {
+        position: "bottom-left",
+      });
+      void utils.calendar.getAllCalendarsWithUnifiedEvents.invalidate();
+      void utils.calendar.getAllUnifiedEvents.invalidate();
+      void utils.scheduler.getSchedulingStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Löschen fehlgeschlagen", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  });
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   const writableCalendar =
     calendars?.find(
@@ -379,6 +397,26 @@ export function ScheduleButton() {
                 <>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Neu planen
+                </>
+              )}
+            </Button>
+          )}
+          {stats && stats.scheduledTasks > 0 && (
+            <Button
+              onClick={() => clearScheduledMutation.mutate()}
+              disabled={clearScheduledMutation.isPending}
+              size="sm"
+              variant="outline"
+            >
+              {clearScheduledMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Lösche...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Alle löschen
                 </>
               )}
             </Button>
