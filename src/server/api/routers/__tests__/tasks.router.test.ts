@@ -4,11 +4,13 @@ const { mockInferMissingTaskFields } = vi.hoisted(() => ({
   mockInferMissingTaskFields: vi.fn(),
 }));
 
+import type * as AiInferService from "@/server/api/services/ai-infer-service";
+
 vi.mock("@/server/api/services/ai-infer-service", async () => {
   const actual =
-    await vi.importActual<
-      typeof import("@/server/api/services/ai-infer-service")
-    >("@/server/api/services/ai-infer-service");
+    await vi.importActual<typeof AiInferService>(
+      "@/server/api/services/ai-infer-service",
+    );
 
   return {
     ...actual,

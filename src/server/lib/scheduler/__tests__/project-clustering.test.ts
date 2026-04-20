@@ -35,7 +35,7 @@ function scoreSchedule(tasks: EATask[]): number {
     schedule,
     tasks,
     [],
-    Array(24).fill(0.5),
+    Array(24).fill(0.5) as number[],
     24 * 60,
     [[0, 24 * 60]],
     new Map(tasks.map((task) => [task.id, task])),
