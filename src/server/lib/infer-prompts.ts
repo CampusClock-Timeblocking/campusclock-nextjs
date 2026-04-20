@@ -1,3 +1,5 @@
+import type { SimilarTaskFeedback } from "@/server/api/services/feedback-embedding-service";
+
 export interface TaskInferenceProjectContext {
   title: string;
   deadline?: Date | null;
@@ -61,4 +63,41 @@ Think about mental/physical effort, skill required, number of steps, unknowns, a
 - 1-3: Simple and straightforward
 - 4-7: Moderate effort or planning needed
 - 8-10: Difficult, complex, or unfamiliar`;
+}
+
+export function getTaskInferencePromptWithHistory(
+  title: string,
+  description: string | null | undefined,
+  projectContext: TaskInferenceProjectContext | undefined,
+  similarTasks: SimilarTaskFeedback[],
+): string {
+  const basePrompt = getTaskInferencePrompt(title, description, projectContext);
+
+  if (similarTasks.length === 0) {
+    return basePrompt;
+  }
+
+  const historySection = similarTasks
+    .map((t, i) => {
+      const lines = [
+        `${i + 1}. "${t.taskTitle}" (similarity: ${(t.similarity * 100).toFixed(0)}%)`,
+        `   - Estimated: ${t.estimatedDurationMinutes ?? "?"}min, complexity ${t.estimatedComplexity ?? "?"}/10, priority ${t.estimatedPriority ?? "?"}/5`,
+        `   - Actual: ${t.actualDurationMinutes}min, user-rated complexity ${t.userComplexity}/10`,
+      ];
+      if (t.feedbackText) {
+        lines.push(`   - User note: "${t.feedbackText}"`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n");
+
+  return `${basePrompt}
+
+**IMPORTANT: Historical data from similar completed tasks by this user:**
+The following similar tasks have been completed before. Use this data to calibrate your estimates.
+If the user consistently reports tasks take longer than estimated, adjust upward. If they rate complexity differently than the system estimated, adjust accordingly.
+
+${historySection}
+
+Use this historical feedback to provide more personalized and accurate estimates.`;
 }

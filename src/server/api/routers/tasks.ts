@@ -44,7 +44,10 @@ export const taskRouter = createTRPCRouter({
         };
       }
 
-      const data = await inferMissingTaskFields(input, projectContext);
+      const data = await inferMissingTaskFields(input, projectContext, {
+        db: ctx.db,
+        userId: ctx.session.user.id,
+      });
       const task = await ctx.db.task.create({
         data: {
           ...data.data,

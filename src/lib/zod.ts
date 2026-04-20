@@ -209,6 +209,17 @@ export const CreateTaskCompletionSchema = z
 
 export const UpdateTaskCompletionSchema = CreateTaskCompletionSchema.partial();
 
+/* Task Feedback Schemas */
+
+export const submitTaskFeedbackSchema = z.object({
+  taskId: z.string().uuid(),
+  actualDurationMinutes: z.number().int().min(1).max(1440),
+  userComplexity: z.number().int().min(1).max(10),
+  feedbackText: z.string().max(2000).optional(),
+});
+
+export type SubmitTaskFeedbackInput = z.infer<typeof submitTaskFeedbackSchema>;
+
 /* Scheduling Config Schemas */
 
 export const CreateSchedulingConfigSchema = z.object({

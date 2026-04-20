@@ -68,6 +68,7 @@ import {
   getStatusBade,
   getStatusIcon,
 } from "../datatable/columns/task-columns";
+import { TaskFeedbackDialog } from "../task-feedback-dialog";
 
 interface EventDialogProps {
   event: CalendarEvent | null;
@@ -92,6 +93,7 @@ export function EventDialog({
   // Track visibility of optional fields
   const [showDescription, setShowDescription] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Get calendars from context to check if event is from external calendar
   const { calendars } = useCalendarContext();
@@ -99,6 +101,12 @@ export function EventDialog({
   // Fetch task data if event is linked to a task
   const { data: taskData } = api.task.getById.useQuery(
     { id: displayEvent?.taskId ?? "" },
+    { enabled: !!displayEvent?.taskId },
+  );
+
+  // Check if feedback already exists for this task
+  const { data: existingFeedback } = api.feedback.getByTaskId.useQuery(
+    { taskId: displayEvent?.taskId ?? "" },
     { enabled: !!displayEvent?.taskId },
   );
 
@@ -158,8 +166,24 @@ export function EventDialog({
   const handleTaskStatusUpdate = async (newStatus: TaskStatus) => {
     if (!updateTaskMutation || !taskData) return;
 
+    if (newStatus === TaskStatus.COMPLETED && !existingFeedback) {
+      setFeedbackOpen(true);
+      return;
+    }
+
     try {
       await updateTaskMutation.mutateAsync({ status: newStatus });
+      toast.success("Task status updated");
+    } catch (error) {
+      toast.error("Failed to update task status");
+      console.error(error);
+    }
+  };
+
+  const handleTaskComplete = async () => {
+    if (!updateTaskMutation) return;
+    try {
+      await updateTaskMutation.mutateAsync({ status: "COMPLETED" });
       toast.success("Task status updated");
     } catch (error) {
       toast.error("Failed to update task status");
@@ -913,6 +937,18 @@ export function EventDialog({
           </Form>
         )}
       </DialogContent>
+
+      {isTask && taskData && (
+        <TaskFeedbackDialog
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+          taskId={taskData.id}
+          taskTitle={taskData.title}
+          estimatedDuration={taskData.durationMinutes}
+          estimatedComplexity={taskData.complexity}
+          onComplete={handleTaskComplete}
+        />
+      )}
     </Dialog>
   );
 }

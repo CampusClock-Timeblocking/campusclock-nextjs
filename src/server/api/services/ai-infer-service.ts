@@ -1,10 +1,16 @@
 import { aiTaskInferenceResultSchema, type CreateTaskInput } from "@/lib/zod";
 import {
   getTaskInferencePrompt,
+  getTaskInferencePromptWithHistory,
   type TaskInferenceProjectContext,
 } from "@/server/lib/infer-prompts";
 import { getOpenAIClient } from "@/server/lib/openai";
 import { zodResponseFormat } from "openai/helpers/zod";
+import {
+  findSimilarTaskFeedback,
+  type SimilarTaskFeedback,
+} from "./feedback-embedding-service";
+import type { PrismaClient } from "@prisma/client";
 
 export enum InferenceStatus {
   SUCCESS,
@@ -20,6 +26,10 @@ export interface InferenceResult<T> {
 export async function inferMissingTaskFields(
   task: CreateTaskInput,
   projectContext?: TaskInferenceProjectContext,
+  options?: {
+    db?: PrismaClient;
+    userId?: string;
+  },
 ) {
   const shouldInfer =
     !task.durationMinutes || !task.priority || !task.complexity;
@@ -43,11 +53,34 @@ export async function inferMissingTaskFields(
   }
 
   const { title, description } = task;
-  const prompt = getTaskInferencePrompt(title, description, projectContext);
 
+  let similarTasks: SimilarTaskFeedback[] = [];
+  if (options?.db && options?.userId) {
+    try {
+      similarTasks = await findSimilarTaskFeedback(options.db, {
+        userId: options.userId,
+        taskTitle: title,
+        taskDescription: description,
+      });
+    } catch (error) {
+      console.warn("[ai-infer] Failed to fetch similar tasks:", error);
+    }
+  }
+
+  const prompt =
+    similarTasks.length > 0
+      ? getTaskInferencePromptWithHistory(
+          title,
+          description,
+          projectContext,
+          similarTasks,
+        )
+      : getTaskInferencePrompt(title, description, projectContext);
+
+  console.log(prompt);
   try {
     const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini-2025-08-07",
       messages: [
         {
           role: "system",
@@ -59,8 +92,6 @@ export async function inferMissingTaskFields(
           content: prompt,
         },
       ],
-      temperature: 0.3,
-      max_tokens: 1000,
       response_format: zodResponseFormat(
         aiTaskInferenceResultSchema,
         "task_inference",

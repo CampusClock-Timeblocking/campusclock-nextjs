@@ -7,6 +7,7 @@ import { habitRouter } from "./routers/habits";
 import { schedulerRouter } from "./routers/scheduler";
 import { calendarAccountRouter } from "./routers/calendar-account";
 import { preferencesRouter } from "./routers/preferences";
+import { feedbackRouter } from "./routers/feedback";
 
 /**
  * This is the primary router for your server.
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   scheduler: schedulerRouter,
   calendarAccount: calendarAccountRouter,
   preferences: preferencesRouter,
+  feedback: feedbackRouter,
 });
 
 // export type definition of API

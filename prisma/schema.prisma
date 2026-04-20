@@ -25,6 +25,7 @@ model User {
   projects           Project[]
   habits             Habit[]
   tasks              Task[]
+  taskFeedbacks      TaskFeedback[]
   schedulingConfig   SchedulingConfig?
   workingPreferences WorkingPreferences?
   excludedPeriods    ExcludedPeriod[]
@@ -149,6 +150,7 @@ model Task {
 
   // Relationships
   taskCompletions TaskCompletion[] // For task completion tracking
+  taskFeedbacks   TaskFeedback[]
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectId       String?
@@ -409,4 +411,27 @@ enum PeriodUnit {
   WEEK
   MONTH
   YEAR
+}
+
+model TaskFeedback {
+  id                       String   @id @default(uuid())
+  taskTitle                String
+  taskDescription          String?  @db.Text
+  embedding                Unsupported("vector(1536)")
+  actualDurationMinutes    Int
+  userComplexity           Int
+  feedbackText             String?  @db.Text
+  estimatedDurationMinutes Int?
+  estimatedPriority        Int?
+  estimatedComplexity      Int?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId String @unique
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("task_feedback")
 }
