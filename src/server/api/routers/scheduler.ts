@@ -327,23 +327,13 @@ export const schedulerRouter = createTRPCRouter({
 
       const taskIds = input.scheduledTasks.map((t) => t.id);
 
-      const [dbTasks, dbPreferences] = await Promise.all([
+      const [dbTasks] = await Promise.all([
         ctx.db.task.findMany({
           where: { id: { in: taskIds }, userId: ctx.session.user.id },
         }),
-        ctx.db.workingPreferences.findUnique({
-          where: { userId: ctx.session.user.id },
-        }),
       ]);
 
-      const energyLevels =
-        Array.isArray(dbPreferences?.alertnessByHour) &&
-        dbPreferences.alertnessByHour.length === 24
-          ? dbPreferences.alertnessByHour
-          : Array.from({ length: 24 }, (_, h) => (h >= 9 && h <= 17 ? 0.75 : 0.55));
-
       // Build schedule map and deadline map using epoch-minute offsets
-      // getEnergyAt uses (startMin % MINUTES_PER_DAY) so epoch offsets work correctly
       const scheduleMap: Record<string, number> = {};
       for (const st of input.scheduledTasks) {
         scheduleMap[st.id] = Math.floor(new Date(st.start).getTime() / 60000);
@@ -368,7 +358,6 @@ export const schedulerRouter = createTRPCRouter({
       const debugInfo = computeTaskDebugInfo(
         scheduleMap,
         eaTasks,
-        energyLevels,
         deadlineMap,
       );
 

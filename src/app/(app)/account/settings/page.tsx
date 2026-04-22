@@ -10,11 +10,9 @@ import { Loader2, User, Mail } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { TitlePage } from "@/components/basic-components/page-layout";
 import { WorkingHoursCard } from "@/components/settings/profile/working-hours";
-import { EnergyProfileCard } from "@/components/settings/profile/energy-profile";
 import { api } from "@/trpc/react";
 import {
   useUpdateWorkingHoursMutation,
-  useUpdateEnergyProfileMutation,
 } from "@/hooks/mutations/preferences";
 
 // --------- Small UI helpers ---------
@@ -48,10 +46,9 @@ export default function AccountSettings() {
     authClient.useSession();
   const me = sessionData?.user;
 
-  // ---- Preferences (working hours + energy) ----
+  // ---- Preferences (working hours) ----
   const preferencesQuery = api.preferences.get.useQuery();
   const updateWorkingHours = useUpdateWorkingHoursMutation();
-  const updateEnergyProfile = useUpdateEnergyProfileMutation();
 
   const {
     register,
@@ -171,13 +168,6 @@ export default function AccountSettings() {
         isLoading={preferencesQuery.isLoading}
         onSave={(v) => updateWorkingHours.mutateAsync(v)}
         isSaving={updateWorkingHours.isPending}
-      />
-
-      <EnergyProfileCard
-        preferences={preferencesQuery.data}
-        isLoading={preferencesQuery.isLoading}
-        onSave={(v) => updateEnergyProfile.mutateAsync(v)}
-        isSaving={updateEnergyProfile.isPending}
       />
     </TitlePage>
   );

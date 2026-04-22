@@ -313,17 +313,12 @@ model WorkingPreferences {
   longBreakMinutes   Int @default(60) // long break duration between focus sessions
   longBreakFrequency Int @default(3) // number of focus sessions between long breaks
 
-  // Energy profile
-  alertnessByHour Float[] // Value between 0 and 1 for each hour of the day
-  // REVIEW: Add preferred modes (e.g. "creative", "deep", "admin" with times and weights)
-
   // Duration learning
   durationMultiplier   Float @default(1.0)
   durationObservations Int   @default(0)
 
   // Fitness weight overrides
   weightDeadlinePenalty Float @default(1.0)
-  weightEnergyPenalty   Float @default(1.0)
   weightEarlinessBonus  Float @default(1.0)
   weightClusterBonus    Float @default(1.0)
 

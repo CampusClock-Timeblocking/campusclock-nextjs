@@ -32,7 +32,6 @@ export class LearningService {
           select: {
             id: true,
             due: true,
-            complexity: true,
             durationMinutes: true,
           },
         }),
@@ -70,17 +69,12 @@ export class LearningService {
   }
 
   private static buildLearningUpdate(
-    task: Pick<Task, "due" | "complexity" | "durationMinutes">,
+    task: Pick<Task, "due" | "durationMinutes">,
     completion: Pick<TaskCompletion, "startTime" | "endTime">,
     prefs: WorkingPreferences,
   ): Record<string, unknown> | null {
     const learningPrefs = prefs as WorkingPreferencesWithLearning;
     const durationUpdate = this.getDurationLearningUpdate(
-      task,
-      completion,
-      learningPrefs,
-    );
-    const energyUpdate = this.getEnergyLearningUpdate(
       task,
       completion,
       learningPrefs,
@@ -93,7 +87,6 @@ export class LearningService {
 
     const combined = {
       ...durationUpdate,
-      ...energyUpdate,
       ...weightUpdate,
     };
 
@@ -126,34 +119,6 @@ export class LearningService {
       durationMultiplier,
       durationObservations: (prefs.durationObservations ?? 0) + 1,
     };
-  }
-
-  private static getEnergyLearningUpdate(
-    task: Pick<Task, "durationMinutes" | "complexity">,
-    completion: Pick<TaskCompletion, "startTime" | "endTime">,
-    prefs: WorkingPreferencesWithLearning,
-  ): Record<string, number[]> {
-    const complexity = normalizeComplexity(task.complexity);
-    if (complexity < 0.7) {
-      return {};
-    }
-
-    const estimatedMinutes = Math.max(1, task.durationMinutes ?? 60);
-    const actualMinutes = this.getActualMinutes(completion);
-    if (actualMinutes <= 0) {
-      return {};
-    }
-
-    const speed = estimatedMinutes / actualMinutes;
-    const inferredEnergy = clamp(speed * 0.5, 0, 1);
-    const hour = completion.startTime.getUTCHours();
-
-    const alertnessByHour = ensure24HourProfile(prefs.alertnessByHour);
-    const oldEnergy = alertnessByHour[hour] ?? 0.5;
-    alertnessByHour[hour] =
-      oldEnergy * (1 - LEARNING_RATE) + inferredEnergy * LEARNING_RATE;
-
-    return { alertnessByHour };
   }
 
   private static getFitnessWeightUpdate(
@@ -196,29 +161,6 @@ export class LearningService {
     const diff = completion.endTime.getTime() - completion.startTime.getTime();
     return Math.max(0, diff / 60_000);
   }
-}
-
-function normalizeComplexity(value: number | null): number {
-  if (value === null) {
-    return 0.5;
-  }
-
-  if (value <= 1) {
-    return clamp(value, 0, 1);
-  }
-
-  return clamp(value / 10, 0, 1);
-}
-
-function ensure24HourProfile(input: number[] | null): number[] {
-  const base = Array.isArray(input) ? [...input] : [];
-  const result = base.slice(0, 24).map((value) => clamp(value, 0, 1));
-
-  while (result.length < 24) {
-    result.push(0.5);
-  }
-
-  return result;
 }
 
 function clamp(value: number, min: number, max: number): number {

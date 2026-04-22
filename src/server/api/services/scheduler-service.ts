@@ -14,7 +14,6 @@ import {
   taskToSchedulerTask,
   eventToBusySlot,
   preferencesToWorkingHours,
-  preferencesToEnergyProfile,
   type SchedulingContext,
   type SchedulingResult,
 } from "@/server/lib/scheduler/prisma-adapters";
@@ -25,7 +24,6 @@ import { CalendarService } from "./calendar-service";
 type WorkingPreferencesLearningFields = {
   durationMultiplier?: number;
   weightDeadlinePenalty?: number;
-  weightEnergyPenalty?: number;
   weightEarlinessBonus?: number;
   weightClusterBonus?: number;
 };
@@ -359,7 +357,6 @@ export class SchedulerService {
     const durationMultiplier = prefs.durationMultiplier ?? 1;
     const fitnessWeights: FitnessWeights = {
       deadlinePenalty: prefs.weightDeadlinePenalty ?? 1,
-      energyPenalty: prefs.weightEnergyPenalty ?? 1,
       earlinessBonus: prefs.weightEarlinessBonus ?? 1,
       clusterBonus: prefs.weightClusterBonus ?? 1,
     };
@@ -397,7 +394,6 @@ export class SchedulerService {
       tasks: schedulerTasks,
       busySlots,
       workingHours,
-      energyProfile: preferencesToEnergyProfile(prefs),
       fitnessWeights,
       baseDate: scheduleBaseDate,
       currentTime,

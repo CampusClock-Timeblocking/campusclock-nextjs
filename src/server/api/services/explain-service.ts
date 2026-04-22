@@ -68,7 +68,6 @@ export async function explainScheduledTasks(
         hour: "2-digit",
         minute: "2-digit",
       }),
-      energyAtSlot: debug?.energyAtSlot ?? 0.5,
       deadlineDistanceHours:
         debug?.deadlineDistanceMinutes !== undefined &&
         debug.deadlineDistanceMinutes !== Infinity
@@ -88,9 +87,9 @@ export async function explainScheduledTasks(
           role: "system",
           content: `Du bist ein Planungs-Assistent für CampusClock, eine Zeitblock-App für Studierende.
 Für jede geplante Aufgabe schreibe GENAU EINEN kurzen deutschen Satz (max. 20 Wörter), der erklärt, warum sie zu diesem Zeitpunkt eingeplant wurde.
-Konzentriere dich auf den stärksten Grund: Deadline-Nähe (wenn < 24 Stunden), Energieniveau oder Standortcluster.
+Konzentriere dich auf den stärksten Grund: Deadline-Nähe (wenn < 24 Stunden) oder Standortcluster.
 
-Beispiel: "Mathe wurde auf 09:00 geplant, da du dann höchste Energie hast und die Deadline morgen ist."
+Beispiel: "Mathe wurde auf 09:00 geplant, da die Deadline morgen ist."
 
 Du bekommst ein Array von Aufgaben-Kontextobjekten. Gib ein JSON-Objekt zurück mit einem Array "explanations", das Objekte mit "taskId" und "explanation" enthält.`,
         },

@@ -8,7 +8,6 @@
  * - User priorities and deadlines
  * - Available working hours
  * - Existing calendar commitments (busy slots)
- * - Energy levels throughout the day
  * - Task complexity and location
  *
  * ## Quick Start
@@ -40,11 +39,6 @@
  *     { startTime: '00:00', endTime: '00:00' }, // Weekend - no work
  *     { startTime: '00:00', endTime: '00:00' },
  *   ],
- *   energyProfile: [
- *     0.3, 0.3, 0.3, 0.3, 0.4, 0.5, 0.6, 0.7, // 00:00 - 07:00
- *     0.8, 0.9, 0.9, 0.9, 0.8, 0.7, 0.7, 0.8, // 08:00 - 15:00
- *     0.8, 0.7, 0.6, 0.5, 0.4, 0.4, 0.3, 0.3, // 16:00 - 23:00
- *   ],
  * });
  *
  * console.log(result.status); // 'optimal', 'feasible', 'impossible', or 'error'
@@ -60,7 +54,6 @@
  *   taskToSchedulerTask,
  *   eventToBusySlot,
  *   preferencesToWorkingHours,
- *   preferencesToEnergyProfile,
  * } from '@/server/lib/scheduler';
  *
  * // Fetch from database
@@ -75,7 +68,6 @@
  *   tasks: tasks.map(taskToSchedulerTask),
  *   busySlots: events.map(eventToBusySlot),
  *   workingHours: preferencesToWorkingHours(preferences),
- *   energyProfile: preferencesToEnergyProfile(preferences),
  * });
  * ```
  */
@@ -106,7 +98,6 @@ export type {
   ScheduleStatus,
   SolverStatus,
   SoftConstraintAnalysis,
-  EnergyComplexityAnalysis,
   LocationClusteringAnalysis,
   WorkloadBalanceAnalysis,
 } from "./types";
@@ -132,5 +123,4 @@ export {
   taskToSchedulerTask,
   eventToBusySlot,
   preferencesToWorkingHours,
-  preferencesToEnergyProfile,
 } from "./prisma-adapters";

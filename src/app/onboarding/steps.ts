@@ -10,8 +10,8 @@ export const steps = [
         route: "/working-hours",
     },
     {
-        title: "What's your energy rhythm?",
-        description: "We'll match your deep work to your natural alertness patterns for maximum productivity.",
+        title: "You're all set!",
+        description: "Your schedule is ready to be optimized.",
         route: "/preferences",
     },
 ] as const

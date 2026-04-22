@@ -47,7 +47,6 @@ export interface EATask {
 
 /** Per-task debug info collected from a final schedule — used by explain-service. */
 export interface TaskDebugInfo {
-  energyAtSlot: number; // 0–1, EA energy profile value at scheduled hour
   deadlineDistanceMinutes: number; // positive = minutes remaining before deadline
   isInLocationCluster: boolean;
   penaltiesApplied: string[];
@@ -66,14 +65,12 @@ export interface EvolveResult {
 
 export interface FitnessWeights {
   deadlinePenalty: number;
-  energyPenalty: number;
   earlinessBonus: number;
   clusterBonus: number;
 }
 
 export const DEFAULT_FITNESS_WEIGHTS: FitnessWeights = {
   deadlinePenalty: 1,
-  energyPenalty: 1,
   earlinessBonus: 1,
   clusterBonus: 1,
 };
@@ -320,15 +317,6 @@ export function getValidStartSlots(
   return valid;
 }
 
-/**
- * Return the energy level for a given global start minute.
- * Indexes into the 24-element hourly energy profile.
- */
-export function getEnergyAt(startMin: number, energyLevels: number[]): number {
-  const hour = Math.floor((startMin % MINUTES_PER_DAY) / 60);
-  return energyLevels[Math.min(hour, energyLevels.length - 1)] ?? 0.5;
-}
-
 // ============================================================================
 // Topological Sort (Kahn's Algorithm)
 // ============================================================================
@@ -390,11 +378,7 @@ export function topologicalSort(tasks: EATask[]): string[] {
  *   hours     +5000    outside working hours
  *   overlap   +7000    overlap with another task (O(N log N) sweep)
  *
- * Soft penalty:
- *   low_energy +200    complex task (≥0.7) during low energy (<0.5)
- *
  * Bonuses (subtracted):
- *   high_energy -150   complex task during high energy (≥0.8)
  *   early       -x     priority × (10000 − start) / 100
  *   cluster     -100   per task in location cluster (≥2 same location+day)
  */
@@ -402,7 +386,6 @@ export function calculateFitness(
   schedule: EASchedule,
   tasks: EATask[],
   busySlots: Array<[number, number]>,
-  energyLevels: number[],
   horizonMinutes: number,
   whParsed: Array<[number, number]>,
   taskMap: Map<string, EATask>,
@@ -457,13 +440,6 @@ export function calculateFitness(
 
     // Overlap with another task
     if (tasksWithOverlap.has(task.id)) p += 7000;
-
-    // Energy matching
-    const energy = getEnergyAt(start, energyLevels);
-    if (task.complexity >= 0.7 && energy < 0.5) {
-      p += 200 * weights.energyPenalty;
-    }
-    if (task.complexity >= 0.7 && energy >= 0.8) b += 150;
 
     // Preferred start time soft penalty
     if (task.preferredStartAfter !== undefined) {
@@ -711,7 +687,6 @@ function tournament(
  * @param tasks          Tasks to schedule (with durationMinutes, not duration)
  * @param busySlots      Pre-converted minute-offset pairs [startMin, endMin]
  * @param workingHours   7-day working hours (Mon-Sun), HH:MM format
- * @param energyLevels   24-element hourly energy profile (0-1)
  * @param baseDate       Start of scheduling horizon (time 00:00:00)
  * @param options        EA tuning parameters
  * @returns              Best schedule found, its fitness, and fitness curve
@@ -720,7 +695,6 @@ export function evolve(
   tasks: EATask[],
   busySlots: Array<[number, number]>,
   workingHours: WorkingHours[],
-  energyLevels: number[],
   baseDate: Date,
   options?: EvolveOptions,
 ): EvolveResult {
@@ -764,7 +738,6 @@ export function evolve(
       ind,
       tasks,
       busySlots,
-      energyLevels,
       horizon,
       whParsed,
       taskMap,
@@ -868,7 +841,6 @@ export function evolve(
 export function computeTaskDebugInfo(
   schedule: EASchedule,
   tasks: EATask[],
-  energyLevels: number[],
   deadlineMinutes: Map<string, number>,
 ): Record<string, TaskDebugInfo> {
   // Pre-compute location clusters (same location + day = cluster)
@@ -887,7 +859,6 @@ export function computeTaskDebugInfo(
     const start = schedule[task.id]!;
     const end = start + task.durationMinutes;
 
-    const energy = getEnergyAt(start, energyLevels);
     const dl = deadlineMinutes.get(task.id);
     const deadlineDistanceMinutes = dl !== undefined ? dl - end : Infinity;
 
@@ -900,20 +871,15 @@ export function computeTaskDebugInfo(
 
     if (dl !== undefined && end > dl)
       penaltiesApplied.push("deadline_violated");
-    if (task.complexity >= 0.7 && energy < 0.5)
-      penaltiesApplied.push("low_energy_for_complex");
     if (
       task.preferredStartAfter !== undefined &&
       start % MINUTES_PER_DAY < task.preferredStartAfter
     ) {
       penaltiesApplied.push("before_preferred_start");
     }
-    if (task.complexity >= 0.7 && energy >= 0.8)
-      bonusesApplied.push("high_energy_match");
     if (isInLocationCluster) bonusesApplied.push("location_cluster");
 
     result[task.id] = {
-      energyAtSlot: energy,
       deadlineDistanceMinutes,
       isInLocationCluster,
       penaltiesApplied,

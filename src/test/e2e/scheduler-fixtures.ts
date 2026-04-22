@@ -125,9 +125,6 @@ export async function createSchedulerUserFixture(
       shortBreakMinutes: 15,
       longBreakMinutes: 60,
       longBreakFrequency: 3,
-      alertnessByHour: Array.from({ length: 24 }, (_, hour) =>
-        hour >= 9 && hour < 17 ? 0.9 : 0.3,
-      ),
     },
   });
 

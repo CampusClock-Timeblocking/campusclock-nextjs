@@ -204,42 +204,6 @@ export function preferencesToWorkingHours(
   });
 }
 
-/**
- * Extract energy profile from WorkingPreferences.
- *
- * Energy profile represents the user's alertness/energy level for each hour
- * of the day (0-23). Complex tasks should be scheduled during high-energy hours.
- *
- * Returns an array of 24 numbers (0-1) representing energy for each hour.
- *
- * @param preferences - User's working preferences from database
- * @returns Array of 24 energy levels (0-1)
- *
- * @example
- * ```typescript
- * const energyProfile = preferencesToEnergyProfile(preferences);
- * // Returns something like:
- * // [0.3, 0.3, ..., 0.5, 0.7, 0.9, 0.9, 0.8, 0.7, ..., 0.4, 0.3]
- * // Low energy early morning, peak mid-morning, decline in evening
- * ```
- */
-export function preferencesToEnergyProfile(
-  preferences: WorkingPreferences,
-): number[] {
-  const profile = preferences.alertnessByHour ?? [];
-
-  // Ensure we have exactly 24 values
-  if (profile && Array.isArray(profile) && profile.length === 24) {
-    return profile;
-  }
-
-  // Default to balanced profile if not set
-  // Higher energy during typical working hours (9am-5pm)
-  return Array(24)
-    .fill(0)
-    .map((_, h) => (h >= 9 && h <= 17 ? 0.75 : 0.55));
-}
-
 // ============================================================================
 // HELPER FUNCTIONS - Internal utilities
 // ============================================================================

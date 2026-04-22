@@ -39,8 +39,6 @@ export const weekdays = [
   "SUNDAY",
 ] as const;
 
-export const energyProfiles = ["EARLY_BIRD", "BALANCED", "NIGHT_OWL"] as const;
-
 /* Common Schemas */
 
 const titleSchema = z
@@ -243,11 +241,6 @@ export const WorkingHoursSchema = z.object({
 });
 export type WorkingHours = z.infer<typeof WorkingHoursSchema>;
 
-export const PreferencesInput = z.object({
-  energyProfile: z.enum(energyProfiles),
-});
-export type Preferences = z.infer<typeof PreferencesInput>;
-
 export const CreateWorkingPreferencesSchema = WorkingHoursSchema.extend({
   // Hours + availability
   dailyMaxMinutes: z.int().min(60).max(1440).default(600), // 1 hour to 24 hours
@@ -258,9 +251,6 @@ export const CreateWorkingPreferencesSchema = WorkingHoursSchema.extend({
   shortBreakMinutes: z.int().min(5).max(120).default(15), // 5 min to 2 hours
   longBreakMinutes: z.int().min(15).max(480).default(60), // 15 min to 8 hours
   longBreakFrequency: z.int().min(1).max(20).default(3), // 1 to 20 sessions
-
-  // Energy profile
-  alertnessByHour: z.array(z.number().min(0).max(1)).length(24),
 })
   .refine(
     (data) => {

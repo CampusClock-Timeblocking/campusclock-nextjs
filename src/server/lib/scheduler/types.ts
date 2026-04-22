@@ -81,10 +81,8 @@ export interface ScheduleRequest {
   tasks: TaskInput[]; // Tasks to schedule
   busySlots?: BusySlot[]; // Already occupied time slots
   workingHours: WorkingHours[]; // 7 entries (Monday-Sunday)
-  energyProfile: number[]; // 24 entries (hour 0-23), values 0-1
   fitnessWeights?: {
     deadlinePenalty: number;
-    energyPenalty: number;
     earlinessBonus: number;
     clusterBonus: number;
   };
@@ -100,7 +98,6 @@ export interface ScheduleRequest {
 export interface ValidatedScheduleRequest extends ScheduleRequest {
   tasks: ValidatedTask[];
   busySlots: BusySlot[];
-  energyProfile: number[];
   baseDate: Date;
   currentTime: Date;
   seed: number;
@@ -231,18 +228,6 @@ export interface ScheduledTask {
 }
 
 /**
- * Analysis of how well complex tasks match user's energy levels.
- * Complex tasks should ideally be scheduled during high-energy hours.
- */
-export interface EnergyComplexityAnalysis {
-  complexTasks: number; // Total number of complex tasks
-  perfectMatches: number; // Scheduled during energy >= 0.8
-  goodMatches: number; // Scheduled during energy >= 0.6
-  poorMatches: number; // Scheduled during energy < 0.6
-  matchRate: number; // perfectMatches / complexTasks
-}
-
-/**
  * Analysis of location clustering.
  * Tasks at the same location should ideally be grouped together.
  */
@@ -267,7 +252,6 @@ export interface WorkloadBalanceAnalysis {
  * These are preferences that we try to satisfy but aren't strict requirements.
  */
 export interface SoftConstraintAnalysis {
-  energy: EnergyComplexityAnalysis;
   location: LocationClusteringAnalysis;
   workload: WorkloadBalanceAnalysis;
   overallScore: number; // Combined score 0-10 (higher is better)

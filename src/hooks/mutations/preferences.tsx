@@ -16,15 +16,4 @@ export function useUpdateWorkingHoursMutation() {
   });
 }
 
-export function useUpdateEnergyProfileMutation() {
-  const utils = api.useUtils();
-  return api.preferences.updateEnergyProfile.useMutation({
-    onSuccess: () => {
-      toast.success("Energy profile updated!");
-      void utils.preferences.get.invalidate();
-    },
-    onError: () => {
-      toast.error("Failed to update energy profile.");
-    },
-  });
-}
+

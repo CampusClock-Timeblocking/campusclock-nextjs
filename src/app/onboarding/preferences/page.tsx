@@ -5,20 +5,11 @@ import { motion } from "framer-motion";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form } from "@/components/ui/form";
 import { OnboardingNavigation } from "../OnboardingNavigation";
-import { PreferencesInput, type Preferences } from "@/lib/zod";
-import { EnergyProfileSelector } from "@/components/settings/profile/energy-profile";
 import { steps } from "../steps";
 
 export default function PreferencesPage() {
   const [loading, setLoading] = useState(false);
-  const form = useForm<Preferences>({
-    resolver: zodResolver(PreferencesInput),
-    defaultValues: { energyProfile: "BALANCED" },
-  });
   const router = useRouter();
   const savePreferences = api.onboarding.savePreferences.useMutation({
     onMutate: () => setLoading(true),
@@ -53,33 +44,24 @@ export default function PreferencesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
       >
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((values) =>
-              savePreferences.mutateAsync(values),
-            )}
-            className="space-y-6"
+        <form onSubmit={(e) => { e.preventDefault(); savePreferences.mutate(); }} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5, ease: "easeOut" }}
           >
-            <EnergyProfileSelector form={form} idPrefix="onboarding" />
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.5, ease: "easeOut" }}
-            >
-              <OnboardingNavigation
-                nextText={
-                  loading
-                    ? "Creating your plan..."
-                    : "Create optimized schedule"
-                }
-                nextDisabled={loading}
-                className="mt-12"
-                isLastStep={true}
-              />
-            </motion.div>
-          </form>
-        </Form>
+            <OnboardingNavigation
+              nextText={
+                loading
+                  ? "Creating your plan..."
+                  : "Create optimized schedule"
+              }
+              nextDisabled={loading}
+              className="mt-12"
+              isLastStep={true}
+            />
+          </motion.div>
+        </form>
       </motion.div>
     </>
   );

@@ -29,7 +29,6 @@ import {
 } from "./ea-core";
 import type {
   BusySlot,
-  EnergyComplexityAnalysis,
   LocationClusteringAnalysis,
   ScheduleRequest,
   ScheduleResponse,
@@ -47,7 +46,6 @@ import type {
 
 const MIN_DURATION_MINUTES = 15;
 const TIME_PATTERN = /^\d{2}:\d{2}$/;
-const COMPLEXITY_THRESHOLD = 0.5;
 
 // ============================================================================
 // ENHANCED SCHEDULER CLASS
@@ -146,7 +144,6 @@ export class EnhancedScheduler {
         eaTasks,
         busySlotsMinutes,
         validated.workingHours,
-        validated.energyProfile,
         validated.baseDate,
         {
           timeHorizon,
@@ -225,7 +222,6 @@ export class EnhancedScheduler {
         response.softConstraints = analyseSoftConstraints(
           response.tasks,
           validated.tasks,
-          validated.energyProfile,
         );
       }
 
@@ -318,7 +314,6 @@ const WorkingHoursSchema = z.object({
 
 const FitnessWeightsSchema = z.object({
   deadlinePenalty: z.number().finite().positive(),
-  energyPenalty: z.number().finite().positive(),
   earlinessBonus: z.number().finite().positive(),
   clusterBonus: z.number().finite().positive(),
 });
@@ -330,9 +325,6 @@ const ScheduleSchema = z.object({
   workingHours: z
     .array(WorkingHoursSchema)
     .length(7, "workingHours must have 7 entries"),
-  energyProfile: z
-    .array(z.number().finite())
-    .nonempty("energyProfile cannot be empty"),
   fitnessWeights: FitnessWeightsSchema.optional(),
   baseDate: z.date().optional(),
   currentTime: z.date().optional(),
@@ -396,8 +388,6 @@ export function validateScheduleRequest(
     }
   });
 
-  // Normalize energy profile to 24 hours with values 0-1
-  const energyProfile = normalizeEnergyProfile(parsed.energyProfile);
   const fitnessWeights = normalizeFitnessWeights(parsed.fitnessWeights);
 
   return {
@@ -405,7 +395,6 @@ export function validateScheduleRequest(
     tasks,
     busySlots,
     workingHours,
-    energyProfile,
     fitnessWeights,
     currentTime,
     baseDate,
@@ -427,79 +416,19 @@ export function validateScheduleRequest(
 function analyseSoftConstraints(
   scheduled: ScheduledTask[],
   tasks: ValidatedTask[],
-  energyProfile: number[],
 ): SoftConstraintAnalysis {
-  const energy = analyzeEnergyComplexity(scheduled, tasks, energyProfile);
   const location = analyzeLocationClustering(scheduled, tasks);
   const workload = analyzeWorkloadBalance(scheduled);
 
   // Calculate overall score (0-10)
-  const energyScore = energy.matchRate * 4; // max 4 points
   const locationScore = Math.min(location.efficiency * 3, 3); // max 3 points
   const balanceScore = Math.max(0, 3 - workload.balanceScore / 100); // max 3 points
-  const overallScore = Math.min(energyScore + locationScore + balanceScore, 10);
+  const overallScore = Math.min(locationScore + balanceScore, 10);
 
   return {
-    energy,
     location,
     workload,
     overallScore,
-  };
-}
-
-/**
- * Analyze how well complex tasks match user's energy profile.
- * Complex tasks should ideally be scheduled during high-energy hours.
- */
-function analyzeEnergyComplexity(
-  scheduled: ScheduledTask[],
-  tasks: ValidatedTask[],
-  energyProfile: number[],
-): EnergyComplexityAnalysis {
-  let complexTasks = 0;
-  let perfectMatches = 0; // Energy >= 0.8
-  let goodMatches = 0; // Energy >= 0.6
-  let poorMatches = 0; // Energy < 0.6
-
-  const taskById = new Map(tasks.map((task) => [task.id, task]));
-
-  for (const scheduledTask of scheduled) {
-    const task = taskById.get(scheduledTask.id);
-
-    // Only analyze complex tasks
-    if (!task || task.complexity < COMPLEXITY_THRESHOLD) {
-      continue;
-    }
-
-    complexTasks += 1;
-
-    const start = scheduledTask.start
-      ? safeParseISO(scheduledTask.start)
-      : null;
-    if (!start) {
-      continue;
-    }
-
-    const hour = start.getUTCHours();
-    const energy = energyProfile[hour] ?? 0.5;
-
-    if (energy >= 0.8) {
-      perfectMatches += 1;
-    } else if (energy >= 0.6) {
-      goodMatches += 1;
-    } else {
-      poorMatches += 1;
-    }
-  }
-
-  const matchRate = complexTasks > 0 ? perfectMatches / complexTasks : 0;
-
-  return {
-    complexTasks,
-    perfectMatches,
-    goodMatches,
-    poorMatches,
-    matchRate,
   };
 }
 
@@ -714,33 +643,6 @@ function minutesToDateTime(minutes: number, baseDate: Date): string {
 }
 
 /**
- * Normalize energy profile to exactly 24 values between 0 and 1.
- */
-function normalizeEnergyProfile(energy: number[]): number[] {
-  const length = 24;
-
-  if (!energy || energy.length === 0) {
-    return Array.from({ length }, () => 0.5);
-  }
-
-  if (energy.length === length) {
-    return energy.map((v) => clamp(v, 0, 1));
-  }
-
-  const result = energy.slice(0, length).map((v) => clamp(v, 0, 1));
-  if (result.length < length) {
-    const average =
-      result.length > 0
-        ? result.reduce((acc, value) => acc + value, 0) / result.length
-        : 0.5;
-    while (result.length < length) {
-      result.push(average);
-    }
-  }
-  return result;
-}
-
-/**
  * Safely parse ISO datetime string, returning null on error.
  */
 function safeParseISO(value: string | undefined): Date | null {
@@ -794,8 +696,6 @@ function normalizeFitnessWeights(
   return {
     deadlinePenalty:
       weights?.deadlinePenalty ?? DEFAULT_FITNESS_WEIGHTS.deadlinePenalty,
-    energyPenalty:
-      weights?.energyPenalty ?? DEFAULT_FITNESS_WEIGHTS.energyPenalty,
     earlinessBonus:
       weights?.earlinessBonus ?? DEFAULT_FITNESS_WEIGHTS.earlinessBonus,
     clusterBonus: weights?.clusterBonus ?? DEFAULT_FITNESS_WEIGHTS.clusterBonus,
