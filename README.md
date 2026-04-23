@@ -2,7 +2,7 @@
 
 > **Intelligente Aufgabenplanung und Kalenderverwaltung für Studierende**
 
-CampusClock hilft dir, deine Studienzeit optimal zu nutzen: Die App plant deine Aufgaben automatisch in deinen Kalender ein – abgestimmt auf deine Energie, deine Arbeitszeiten und bestehende Termine. Je länger du die App nutzt, desto besser passt sie sich dir an.
+CampusClock hilft dir, deine Studienzeit optimal zu nutzen: Die App plant deine Aufgaben automatisch in deinen Kalender ein. Abgestimmt auf deine Energie, deine Arbeitszeiten und bestehende Termine. Je länger du die App nutzt, desto besser passt sie sich dir an.
 
 ---
 
@@ -23,14 +23,14 @@ CampusClock hilft dir, deine Studienzeit optimal zu nutzen: Die App plant deine 
 
 | Feature | Beschreibung |
 |---|---|
-|  **Intelligente Aufgabenplanung** | Evolutionärer Algorithmus plant Aufgaben konfliktfrei in deinen Kalender ein (< 10 Sek.) |
-|  **Google-Calendar-Integration** | Bestehende Termine werden automatisch als Sperrzeiten berücksichtigt |
-|  **Energiebewusstes Planen** | Schwierige Aufgaben landen in deinen produktivsten Stunden |
-|  **Semantic Feedback Loop** | Die App passt Dauer, Energieprofil und Deadline-Druck automatisch an dein Verhalten an |
-|  **Gewohnheiten & Wiederholungen** | Wiederkehrende Aufgaben mit flexiblen Wiederholungsmustern |
-|  **Projektverwaltung** | Aufgaben in Projekte und Unterprojekte strukturieren |
-|  **Drag-and-Drop-Kalender** | Visuelle Kalenderansicht mit Drag-and-Drop zum manuellen Verschieben |
-|  **Arbeitszeiten & Pausen** | Konfigurierbare Arbeitszeiten pro Wochentag |
+| **Intelligente Aufgabenplanung** | Evolutionärer Algorithmus plant Aufgaben konfliktfrei in deinen Kalender ein (< 10 Sek.) |
+| **Google-Calendar-Integration** | Bestehende Termine werden automatisch als Sperrzeiten berücksichtigt |
+| **Energiebewusstes Planen** | Schwierige Aufgaben landen in deinen produktivsten Stunden |
+| **Semantic Feedback Loop** | Die App passt Dauer, Energieprofil und Deadline-Druck automatisch an dein Verhalten an |
+| **Gewohnheiten & Wiederholungen** | Wiederkehrende Aufgaben mit flexiblen Wiederholungsmustern |
+| **Projektverwaltung** | Aufgaben in Projekte und Unterprojekte strukturieren |
+| **Drag-and-Drop-Kalender** | Visuelle Kalenderansicht mit Drag-and-Drop zum manuellen Verschieben |
+| **Arbeitszeiten & Pausen** | Konfigurierbare Arbeitszeiten pro Wochentag |
 
 ---
 
@@ -154,6 +154,7 @@ Die E2E-Tests laufen gegen eine separate PostgreSQL-Testdatenbank und testen den
    ```bash
    npm run test:e2e:scheduler
    ```
+
 ---
 
 ## Architektur & Algorithmus
@@ -168,8 +169,8 @@ Nutzer klickt „Planen"
 Aufgaben, Kalendereinträge & Präferenzen laden
        ↓
 Evolutionärer Algorithmus (80 Individuen × bis zu 300 Generationen, max. 10 Sek.)
-  ├── Greeddy Bin-Packing-Start
-  ├── Turn-Selektion (k=3)
+  ├── Greedy Bin-Packing-Start
+  ├── Turnier-Selektion (k=3)
   ├── Uniform-Crossover
   └── Mutation (±15–180 Min.)
        ↓
@@ -188,12 +189,6 @@ Nach jeder abgeschlossenen Aufgabe aktualisiert die App automatisch:
 - **Energieprofil** — lernt, zu welchen Stunden du am produktivsten bist
 - **Deadline-Druck** — erhöht die Dringlichkeit, wenn Deadlines häufig verpasst werden
 
-Weitere Details: [`docs/scheduler-algorithm-summary.md`](docs/scheduler-algorithm-summary.md) · [`docs/scheduler-explainer.md`](docs/scheduler-explainer.md)
-
-### Vollständige Architekturdokumentation
-
-→ [`src/docs/architecture.md`](src/docs/architecture.md)
-
 ---
 
 ## Deployment
@@ -203,6 +198,5 @@ Die App kann auf [Vercel](https://vercel.com), [Netlify](https://netlify.com) od
 - [Vercel-Deployment](https://create.t3.gg/en/deployment/vercel)
 - [Netlify-Deployment](https://create.t3.gg/en/deployment/netlify)
 - [Docker-Deployment](https://create.t3.gg/en/deployment/docker)
-
 
 Vielen Dank für die tolle Aufgabe, wir hatten sehr viel Spaß und Mühe eingesetzt um diese zu bearbeiten.
