@@ -1,40 +1,233 @@
-# Create T3 App
+# CampusClock
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+> **Intelligente Aufgabenplanung und Kalenderverwaltung für Studierende**
 
-## What's next? How do I make an app with this?
+CampusClock hilft dir, deine Studienzeit optimal zu nutzen: Die App plant deine Aufgaben automatisch in deinen Kalender ein – abgestimmt auf deine Energie, deine Arbeitszeiten und bestehende Termine. Je länger du die App nutzt, desto besser passt sie sich dir an.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+---
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Inhaltsverzeichnis
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- [Features](#features)
+- [Tech-Stack](#tech-stack)
+- [Voraussetzungen](#voraussetzungen)
+- [Lokale Entwicklung](#lokale-entwicklung)
+- [Umgebungsvariablen](#umgebungsvariablen)
+- [Verfügbare Skripte](#verfügbare-skripte)
+- [Tests](#tests)
+- [Architektur & Algorithmus](#architektur--algorithmus)
+- [Deployment](#deployment)
 
-## Learn More
+---
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## Features
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+| Feature | Beschreibung |
+|---|---|
+| 🧠 **Intelligente Aufgabenplanung** | Evolutionärer Algorithmus plant Aufgaben konfliktfrei in deinen Kalender ein (< 10 Sek.) |
+| 📅 **Google-Calendar-Integration** | Bestehende Termine werden automatisch als Sperrzeiten berücksichtigt |
+| ⚡ **Energiebewusstes Planen** | Schwierige Aufgaben landen in deinen produktivsten Stunden |
+| 📈 **Lernschleife** | Die App passt Dauer, Energieprofil und Deadline-Druck automatisch an dein Verhalten an |
+| 🔁 **Gewohnheiten & Wiederholungen** | Wiederkehrende Aufgaben mit flexiblen Wiederholungsmustern |
+| 📁 **Projektverwaltung** | Aufgaben in Projekte und Unterprojekte strukturieren |
+| 🖱️ **Drag-and-Drop-Kalender** | Visuelle Kalenderansicht mit Drag-and-Drop zum manuellen Verschieben |
+| ⚙️ **Arbeitszeiten & Pausen** | Konfigurierbare Arbeitszeiten pro Wochentag |
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+---
 
-## Scheduler E2E Tests
+## Tech-Stack
 
-Backend scheduler e2e coverage runs through the tRPC router with a dedicated Postgres database.
+| Schicht | Technologie |
+|---|---|
+| **Framework** | [Next.js 15](https://nextjs.org) (App Router) + [React 19](https://react.dev) |
+| **Sprache** | [TypeScript 5.8](https://www.typescriptlang.org) |
+| **API** | [tRPC 11](https://trpc.io) — end-to-end typsichere APIs |
+| **Datenbank** | [PostgreSQL](https://www.postgresql.org) via [Prisma 6](https://prisma.io) |
+| **Authentifizierung** | [Better Auth 1.3](https://www.better-auth.com) (Google OAuth) |
+| **State Management** | [TanStack Query 5](https://tanstack.com/query) + [Zustand 5](https://zustand-demo.pmnd.rs) |
+| **UI** | [Tailwind CSS 4](https://tailwindcss.com) · [Radix UI](https://www.radix-ui.com) · [shadcn/ui](https://ui.shadcn.com) |
+| **Animationen** | [Framer Motion 12](https://www.framer.com/motion/) |
+| **Caching** | [Upstash Redis](https://upstash.com) |
+| **KI (optional)** | [OpenAI API](https://platform.openai.com) (Feldinferenz) |
+| **Testing** | [Vitest 4](https://vitest.dev) |
 
-1. Start a separate Postgres database for tests.
-2. Set `TEST_DATABASE_URL` to that database.
-3. If you need to apply migrations first, run with `E2E_RUN_MIGRATIONS=1`.
-4. Run `npm run test:e2e:scheduler`.
+---
 
-The suite truncates app tables between tests and should not be pointed at your shared development database. Prisma migrations are opt-in so repeated runs against a shared test database do not contend on the advisory migration lock.
+## Voraussetzungen
 
-## How do I deploy this?
+- **Node.js** ≥ 20
+- **npm** ≥ 10
+- **Docker** oder **Podman** (für die lokale PostgreSQL-Datenbank)
+- Google-OAuth-App (für Login & Calendar-Integration)
+- Upstash-Redis-Instanz (für Caching)
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+---
+
+## Lokale Entwicklung
+
+### 1. Repository klonen & Abhängigkeiten installieren
+
+```bash
+git clone https://github.com/CampusClock-Timeblocking/campusclock-nextjs.git
+cd campusclock-nextjs
+npm install
+```
+
+### 2. Umgebungsvariablen anlegen
+
+```bash
+cp .env.example .env
+```
+
+Alle erforderlichen Werte in `.env` befüllen (siehe [Umgebungsvariablen](#umgebungsvariablen)).
+
+### 3. Datenbank starten
+
+```bash
+./start-database.sh
+```
+
+Das Skript startet einen PostgreSQL-Docker-Container auf Basis der `DATABASE_URL` in deiner `.env`.
+
+### 4. Datenbankschema deployen
+
+```bash
+npm run db:migrate
+```
+
+### 5. Entwicklungsserver starten
+
+```bash
+npm run dev
+```
+
+Die App läuft danach unter [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Umgebungsvariablen
+
+Alle Variablen werden in `src/env.js` mit Zod validiert. Pflichtfelder:
+
+| Variable | Beschreibung |
+|---|---|
+| `DATABASE_URL` | PostgreSQL-Connection-String |
+| `BETTER_AUTH_SECRET` | Zufälliger Secret (min. 32 Zeichen) für die Session-Signierung |
+| `BETTER_AUTH_URL` | Öffentliche URL der App (z. B. `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` | Google-OAuth-Client-ID (für Login) |
+| `GOOGLE_CLIENT_SECRET` | Google-OAuth-Client-Secret (für Login) |
+| `GOOGLE_CALENDAR_CLIENT_ID` | Google-OAuth-Client-ID (für Calendar-API) |
+| `GOOGLE_CALENDAR_CLIENT_SECRET` | Google-OAuth-Client-Secret (für Calendar-API) |
+| `KV_URL` / `KV_REST_API_URL` | Upstash-Redis-Verbindung |
+| `KV_REST_API_TOKEN` | Upstash-Redis-Token (Lesen & Schreiben) |
+| `KV_REST_API_READ_ONLY_TOKEN` | Upstash-Redis-Token (nur Lesen) |
+| `REDIS_URL` | Redis-Connection-String |
+
+Optionale Variablen:
+
+| Variable | Beschreibung |
+|---|---|
+| `OPENAI_API_KEY` | OpenAI-API-Key für KI-gestützte Feldinferenz |
+| `SOLVER_SERVICE_URL` | URL eines externen CP-SAT-Solver-Dienstes (standardmäßig nicht benötigt) |
+| `SOLVER_TIMEOUT_MS` | Timeout für den Solver in Millisekunden (Standard: `10000`) |
+
+---
+
+## Verfügbare Skripte
+
+```bash
+npm run dev          # Entwicklungsserver mit Turbopack
+npm run build        # Produktions-Build
+npm run start        # Produktionsserver starten
+npm run check        # Lint + TypeScript-Prüfung
+npm run lint         # ESLint
+npm run lint:fix     # ESLint mit automatischer Korrektur
+npm run format:write # Prettier (formatieren)
+npm run format:check # Prettier (nur prüfen)
+npm run db:generate  # Neue Prisma-Migration erstellen
+npm run db:migrate   # Prisma-Migrationen anwenden
+npm run db:push      # Schema ohne Migrationen synchronisieren
+npm run db:studio    # Prisma Studio öffnen
+npm run typecheck    # TypeScript-Typprüfung
+npm run test         # Unit-Tests (Vitest)
+npm run test:e2e:scheduler  # E2E-Tests für den Scheduler
+```
+
+---
+
+## Tests
+
+### Unit-Tests
+
+```bash
+npm run test
+```
+
+### Scheduler-E2E-Tests
+
+Die E2E-Tests laufen gegen eine separate PostgreSQL-Testdatenbank und testen den Scheduling-Router vollständig.
+
+1. Separate PostgreSQL-Datenbank starten.
+2. `TEST_DATABASE_URL` in `.env` auf diese Datenbank setzen.
+3. Bei erstmaliger Ausführung Migrationen anwenden:
+   ```bash
+   E2E_RUN_MIGRATIONS=1 npm run test:e2e:scheduler
+   ```
+4. Danach (ohne Migrationen):
+   ```bash
+   npm run test:e2e:scheduler
+   ```
+
+> ⚠️ Die Test-Suite leert alle App-Tabellen zwischen den Tests — niemals auf der produktiven Datenbank ausführen.
+
+---
+
+## Architektur & Algorithmus
+
+### Scheduling-Algorithmus
+
+CampusClock verwendet einen **evolutionären Algorithmus (EA)**, der vollständig in TypeScript läuft (kein externer Solver-Dienst notwendig):
+
+```
+Nutzer klickt „Planen"
+       ↓
+Aufgaben, Kalendereinträge & Präferenzen laden
+       ↓
+Evolutionärer Algorithmus (80 Individuen × bis zu 300 Generationen, max. 10 Sek.)
+  ├── Gieriger Bin-Packing-Start
+  ├── Turnier-Selektion (k=3)
+  ├── Uniform-Crossover
+  └── Mutation (±15–180 Min.)
+       ↓
+Prioritätsbasiertes Nachfiltern (Garantie: keine Überlappungen)
+       ↓
+Bei < 80 % Erfolgsrate: Horizont erweitern und erneut planen (bis zu 7 Mal)
+       ↓
+Ergebnis: eingeplante & nicht eingeplante Aufgaben
+```
+
+### Lernschleife
+
+Nach jeder abgeschlossenen Aufgabe aktualisiert die App automatisch:
+
+- **Dauermultiplikator** — passt zukünftige Zeitschätzungen an (exponentieller gleitender Durchschnitt)
+- **Energieprofil** — lernt, zu welchen Stunden du am produktivsten bist
+- **Deadline-Druck** — erhöht die Dringlichkeit, wenn Deadlines häufig verpasst werden
+
+Weitere Details: [`docs/scheduler-algorithm-summary.md`](docs/scheduler-algorithm-summary.md) · [`docs/scheduler-explainer.md`](docs/scheduler-explainer.md)
+
+### Vollständige Architekturdokumentation
+
+→ [`src/docs/architecture.md`](src/docs/architecture.md)
+
+---
+
+## Deployment
+
+Die App kann auf [Vercel](https://vercel.com), [Netlify](https://netlify.com) oder per Docker betrieben werden.
+
+- [Vercel-Deployment](https://create.t3.gg/en/deployment/vercel)
+- [Netlify-Deployment](https://create.t3.gg/en/deployment/netlify)
+- [Docker-Deployment](https://create.t3.gg/en/deployment/docker)
+
+Beim Build-Prozess kann die Umgebungsvariablenvalidierung mit `SKIP_ENV_VALIDATION=1` übersprungen werden (z. B. für Docker-Builds ohne Laufzeit-Secrets).
